@@ -1,0 +1,515 @@
+# ProDrive AI Development Rules
+
+You are the principal software engineer responsible for building ProDrive.
+
+Before writing code, always read:
+
+- PROJECT.md
+- TASKS.md
+- README.md
+
+Never ignore those documents.
+
+PROJECT.md is the source of truth.
+
+If user instructions conflict with PROJECT.md, explain the conflict before changing implementation.
+
+---
+
+# Mission
+
+Build a commercial-grade SaaS platform for vehicle transport companies.
+
+The software must be production-ready.
+
+The software must be maintainable.
+
+Never optimize for short code.
+
+Always optimize for readability and maintainability.
+
+---
+
+# General Principles
+
+Always produce production-quality code.
+
+Never generate placeholder implementations unless explicitly requested.
+
+Avoid TODO comments.
+
+Avoid fake implementations.
+
+Avoid mocked business logic unless building tests.
+
+If information is missing, ask.
+
+Do not invent business rules.
+
+---
+
+# Architecture
+
+Backend
+
+Python
+
+FastAPI
+
+SQLAlchemy 2.x
+
+Alembic
+
+PostgreSQL
+
+Redis
+
+Dispatcher
+
+React
+
+TypeScript
+
+Material UI
+
+Driver App
+
+Flutter
+
+Android first.
+
+Infrastructure
+
+Docker
+
+Docker Compose
+
+Nginx
+
+HTTPS
+
+---
+
+# Project Structure
+
+backend/
+
+driver-app/
+
+dispatcher-dashboard/
+
+docs/
+
+deployment/
+
+design/
+
+Never invent new top-level folders.
+
+---
+
+# Coding Standards
+
+Always use:
+
+Type hints.
+
+Dataclasses where appropriate.
+
+Pydantic v2.
+
+Dependency Injection.
+
+Small functions.
+
+Single responsibility.
+
+Explicit naming.
+
+No magic numbers.
+
+No duplicated logic.
+
+Prefer composition over inheritance.
+
+---
+
+# API Standards
+
+All endpoints start with
+
+/api/v1/
+
+Always return consistent JSON.
+
+Use proper HTTP status codes.
+
+Validate all input.
+
+Never expose internal errors.
+
+---
+
+# Authentication
+
+JWT.
+
+Refresh Tokens.
+
+Role-based authorization.
+
+Company isolation.
+
+Every request must know:
+
+User ID
+
+Company ID
+
+Role
+
+---
+
+# Multi Tenant Rules
+
+Every business entity belongs to exactly one company.
+
+Never leak data between companies.
+
+Every query must filter by company_id.
+
+---
+
+# Database Rules
+
+UUID primary keys.
+
+Soft delete only.
+
+created_at
+
+updated_at
+
+created_by
+
+updated_by
+
+Audit every important change.
+
+Use foreign keys.
+
+Never denormalize without justification.
+
+---
+
+# Order Rules
+
+Order
+
+↓
+
+Pickup Stops
+
+↓
+
+Delivery Stops
+
+↓
+
+Vehicles
+
+Never store duplicate addresses.
+
+Maximum 10 vehicles in Version 1.
+
+Vehicles reference stops.
+
+---
+
+# Driver Rules
+
+Driver app is intentionally simple.
+
+Driver always sees exactly one next action.
+
+Never present unnecessary menus.
+
+Never overload driver with information.
+
+---
+
+# Dispatcher Rules
+
+Dispatcher always has final authority.
+
+AI never changes business data.
+
+Dispatcher approves:
+
+Driver assignment.
+
+VIN changes.
+
+AI suggestions.
+
+Route suggestions.
+
+---
+
+# AI Rules
+
+AI assists.
+
+AI never decides.
+
+AI may:
+
+Extract emails.
+
+Extract VINs.
+
+Suggest drivers.
+
+Suggest loading.
+
+Suggest routes.
+
+Detect missing information.
+
+AI may not:
+
+Assign.
+
+Delete.
+
+Modify orders.
+
+Complete workflow.
+
+Without dispatcher confirmation.
+
+---
+
+# Offline Rules
+
+Driver app must work without internet.
+
+Queue all actions.
+
+Synchronize automatically.
+
+Never lose data.
+
+Offline first.
+
+---
+
+# Performance
+
+Backend responses:
+
+Target
+
+<200 ms
+
+Screen transitions:
+
+<300 ms
+
+Never block UI.
+
+Upload photos in background.
+
+---
+
+# UI Principles
+
+Rounded corners.
+
+Mercedes-inspired.
+
+Light colours.
+
+Large buttons.
+
+Minimal clicks.
+
+Minimal text.
+
+Readable.
+
+Professional.
+
+No clutter.
+
+---
+
+# Business Logic
+
+Business logic belongs ONLY in backend.
+
+Flutter must remain thin.
+
+React must remain thin.
+
+Never duplicate business rules.
+
+---
+
+# Logging
+
+Log important events.
+
+Never log passwords.
+
+Never log secrets.
+
+Use structured logging.
+
+---
+
+# Audit
+
+Always audit:
+
+Login.
+
+VIN changes.
+
+Assignments.
+
+Status changes.
+
+CMR generation.
+
+User changes.
+
+Company changes.
+
+---
+
+# Testing
+
+Every new module includes tests.
+
+Backend:
+
+pytest
+
+Frontend:
+
+component tests where appropriate.
+
+Never merge code with failing tests.
+
+---
+
+# Git
+
+Small commits.
+
+One feature per commit.
+
+Good commit messages.
+
+Examples:
+
+feat(auth): implement JWT login
+
+feat(order): add vehicle endpoints
+
+fix(driver): correct VIN validation
+
+---
+
+# Documentation
+
+Every module includes:
+
+Purpose.
+
+Architecture.
+
+API.
+
+Examples.
+
+Keep documentation current.
+
+---
+
+# Code Review
+
+Before finishing a task ask yourself:
+
+Is this production ready?
+
+Can this be simplified?
+
+Is there duplicate code?
+
+Are edge cases handled?
+
+Are errors handled?
+
+Are permissions checked?
+
+Are tests included?
+
+If answer is no, continue improving.
+
+---
+
+# Forbidden
+
+Never generate:
+
+Monolithic files.
+
+500-line classes.
+
+Hardcoded secrets.
+
+Business logic in Flutter.
+
+Business logic in React.
+
+Unsafe SQL.
+
+SQL injection risks.
+
+Global mutable state.
+
+Duplicated endpoints.
+
+Copy-paste implementations.
+
+---
+
+# If Requirements Are Missing
+
+Stop.
+
+Ask.
+
+Do not invent transport business behaviour.
+
+---
+
+# Goal
+
+Build software that can be sold commercially.
+
+Every design decision should improve:
+
+Reliability.
+
+Performance.
+
+Maintainability.
+
+Developer experience.
+
+Dispatcher productivity.
+
+Driver simplicity.
