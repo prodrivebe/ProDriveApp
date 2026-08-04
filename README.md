@@ -20,7 +20,7 @@ The platform includes:
 
 ```text
 backend/
-driver-app/
+driver_app/
 dispatcher-dashboard/
 docs/
 design/

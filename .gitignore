@@ -3,32 +3,39 @@
 .env.*
 !.env.example
 
-# Python
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Python build artifacts
 build/
-develop-eggs/
+*.egg-info/
 dist/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-!driver_app/lib/
-!driver_app/lib/**
 parts/
 sdist/
 var/
 wheels/
-*.egg-info/
-.installed.cfg
 *.egg
+.installed.cfg
 MANIFEST
 pip-wheel-metadata/
 share/python-wheels/
+*.so
+.Python
+
+# Python lib dirs (exclude Flutter lib/)
+lib/
+lib64/
+!driver_app/lib/
+!driver_app/lib/**
 
 # Virtual environments
 .venv/
@@ -36,8 +43,7 @@ venv/
 ENV/
 env/
 
-# Testing
-.pytest_cache/
+# Testing / coverage
 .coverage
 htmlcov/
 .tox/
@@ -46,12 +52,8 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
-
-# Type checking
-.mypy_cache/
 .dmypy.json
 dmypy.json
-.ruff_cache/
 
 # IDE
 .idea/
@@ -65,15 +67,19 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
-# Docker
+# Docker / logs
 *.log
 
 # Database
 *.db
 *.sqlite3
 
-# Alembic
-# Keep migration files tracked; ignore local scratch files only
-
 # Runtime uploads (logos, photos, documents)
 backend/uploads/
+
+# Flutter (driver_app)
+driver_app/build/
+driver_app/.dart_tool/
+driver_app/.flutter-plugins
+driver_app/.flutter-plugins-dependencies
+driver_app/.packages

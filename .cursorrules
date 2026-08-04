@@ -94,7 +94,7 @@ HTTPS
 
 backend/
 
-driver-app/
+driver_app/
 
 dispatcher-dashboard/
 
