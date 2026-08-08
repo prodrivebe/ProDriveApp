@@ -52,6 +52,43 @@
 * [x] Trailers
 * [x] Trailer capacities
 * [x] Fleet overview
+* [x] Fleet assignments
+* [x] Fleet audit logging
+* [x] Driver soft delete
+* [x] Driver name search
+
+---
+
+## Sprint 2 — Dispatcher Dashboard
+
+* [x] React + TypeScript + MUI scaffold
+* [x] Auth (login, JWT, role guard)
+* [x] Dashboard KPI widgets
+* [x] Orders list and detail
+* [x] Create order wizard
+* [x] Driver/truck/trailer assignment on orders
+* [x] Global search
+* [x] Customers, fleet, notifications, reports pages
+* [x] Backend CORS for local dev
+* [x] Dispatcher seed user
+* [ ] Customer create/edit UI (deferred)
+* [ ] Map view (deferred)
+* [ ] Frontend tests / CI build (deferred)
+
+---
+
+## Sprint 3 — Fleet Management
+
+* [x] Drivers CRUD with audit
+* [x] Trucks CRUD with audit
+* [x] Trailers CRUD with audit
+* [x] Fleet assignments (create, list, remove)
+* [x] Assignment conflict rules
+* [x] Multi-tenant isolation
+* [x] Permission checks
+* [x] Fleet module tests
+* [x] API and database documentation
+* [x] Lint and type-check clean
 
 ---
 

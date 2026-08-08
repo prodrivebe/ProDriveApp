@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.audit.service import AuditService
 from app.common.exceptions import NotFoundError, ValidationError
 from app.common.tenant import ensure_same_company
 from app.trucks.models import Truck
@@ -20,6 +21,7 @@ class TruckService:
     def __init__(self, db: Session) -> None:
         self._db = db
         self._repository = TruckRepository(db)
+        self._audit_service = AuditService(db)
 
     def list_trucks(
         self,
@@ -49,7 +51,12 @@ class TruckService:
         ensure_same_company(truck.company_id, current_user)
         return truck
 
-    def create_truck(self, current_user: User, payload: TruckCreateRequest) -> Truck:
+    def create_truck(
+        self,
+        current_user: User,
+        payload: TruckCreateRequest,
+        ip_address: str | None,
+    ) -> Truck:
         """Create a truck in the current company."""
         existing = self._repository.get_by_registration_for_company(
             payload.registration_number,
@@ -60,17 +67,25 @@ class TruckService:
                 code="REGISTRATION_ALREADY_EXISTS",
                 message="A truck with this registration number already exists.",
             )
-        return self._repository.create(
+        truck = self._repository.create(
             company_id=current_user.company_id,
             payload=payload,
             created_by=current_user.id,
         )
+        self._audit_service.record_truck_created(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(truck.id),
+            ip_address=ip_address,
+        )
+        return truck
 
     def update_truck(
         self,
         current_user: User,
         truck_id: uuid.UUID,
         payload: TruckUpdateRequest,
+        ip_address: str | None,
     ) -> Truck:
         """Update a truck in the current company."""
         truck = self.get_truck(current_user, truck_id)
@@ -84,9 +99,27 @@ class TruckService:
                     code="REGISTRATION_ALREADY_EXISTS",
                     message="A truck with this registration number already exists.",
                 )
-        return self._repository.update(truck, payload, current_user.id)
+        updated = self._repository.update(truck, payload, current_user.id)
+        self._audit_service.record_truck_updated(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(updated.id),
+            ip_address=ip_address,
+        )
+        return updated
 
-    def delete_truck(self, current_user: User, truck_id: uuid.UUID) -> None:
+    def delete_truck(
+        self,
+        current_user: User,
+        truck_id: uuid.UUID,
+        ip_address: str | None,
+    ) -> None:
         """Soft delete a truck in the current company."""
         truck = self.get_truck(current_user, truck_id)
         self._repository.soft_delete(truck, current_user.id)
+        self._audit_service.record_truck_deleted(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(truck.id),
+            ip_address=ip_address,
+        )

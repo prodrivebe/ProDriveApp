@@ -109,8 +109,16 @@ class TrailerRepository:
             manufacturer=payload.manufacturer,
             model=payload.model,
             trailer_type=payload.trailer_type,
-            maximum_height=payload.maximum_height,
-            maximum_weight=payload.maximum_weight,
+            maximum_height=(
+                float(payload.maximum_height)
+                if payload.maximum_height is not None
+                else None
+            ),
+            maximum_weight=(
+                float(payload.maximum_weight)
+                if payload.maximum_weight is not None
+                else None
+            ),
             maximum_vehicle_count=payload.maximum_vehicle_count,
             active=payload.active,
             created_by=created_by,
@@ -132,8 +140,8 @@ class TrailerRepository:
         trailer.manufacturer = payload.manufacturer
         trailer.model = payload.model
         trailer.trailer_type = payload.trailer_type
-        trailer.maximum_height = payload.maximum_height
-        trailer.maximum_weight = payload.maximum_weight
+        trailer.maximum_height = float(payload.maximum_height) if payload.maximum_height is not None else None
+        trailer.maximum_weight = float(payload.maximum_weight) if payload.maximum_weight is not None else None
         trailer.maximum_vehicle_count = payload.maximum_vehicle_count
         trailer.active = payload.active
         trailer.updated_by = updated_by
@@ -151,3 +159,4 @@ class TrailerRepository:
         self._db.commit()
         self._db.refresh(trailer)
         return trailer
+

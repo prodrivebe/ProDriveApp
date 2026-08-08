@@ -2,12 +2,12 @@
 
 from sqlalchemy import select
 
+import app.database.session as db_session_module
 from app.auth.security import hash_password
 from app.common.enums import UserRole
 from app.companies.models import Company, CompanySettings
 from app.config.settings import get_settings
 from app.database.session import init_engine
-import app.database.session as db_session_module
 from app.users.models import User
 
 
@@ -45,7 +45,16 @@ def seed_development_data() -> None:
             role=UserRole.ADMIN,
             is_active=True,
         )
-        db.add(admin_user)
+        dispatcher_user = User(
+            company_id=company.id,
+            first_name="Dispatch",
+            last_name="User",
+            email="dispatcher@example.com",
+            password_hash=hash_password("Dispatch123!"),
+            role=UserRole.DISPATCHER,
+            is_active=True,
+        )
+        db.add_all([admin_user, dispatcher_user])
         db.commit()
     finally:
         db.close()

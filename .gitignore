@@ -83,3 +83,8 @@ driver_app/.dart_tool/
 driver_app/.flutter-plugins
 driver_app/.flutter-plugins-dependencies
 driver_app/.packages
+
+# Node / dispatcher dashboard
+node_modules/
+dispatcher-dashboard/dist/
+dispatcher-dashboard/.env

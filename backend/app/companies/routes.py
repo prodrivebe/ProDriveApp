@@ -3,9 +3,6 @@
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user
-from app.auth.permissions import require_roles
-from app.common.enums import UserRole
 from app.common.responses import SuccessResponse, success_response
 from app.companies.permissions import require_company_admin, require_company_reader
 from app.companies.schemas import (

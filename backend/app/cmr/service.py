@@ -5,12 +5,12 @@ import uuid
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.cmr.generator import build_cmr_html
 from app.common.enums import DocumentType
 from app.common.exceptions import NotFoundError
 from app.common.storage.local import LocalFileStorage
 from app.companies.repository import CompanyRepository
 from app.config.settings import Settings
-from app.cmr.generator import build_cmr_html
 from app.customers.repository import CustomerRepository
 from app.documents.models import Document
 from app.documents.repository import DocumentRepository

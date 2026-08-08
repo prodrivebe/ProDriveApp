@@ -169,6 +169,9 @@ Fields
 * adr_certificate
 * notes
 * active
+* created_at
+* updated_at
+* deleted_at
 
 ---
 
@@ -184,6 +187,9 @@ Fields
 * vin
 * capacity
 * active
+* created_at
+* updated_at
+* deleted_at
 
 ---
 
@@ -201,6 +207,32 @@ Fields
 * maximum_weight
 * maximum_vehicle_count
 * active
+* created_at
+* updated_at
+* deleted_at
+
+---
+
+## fleet_assignments
+
+Standing assignment linking a driver, truck, and trailer.
+
+Fields
+
+* id
+* company_id
+* driver_id
+* truck_id
+* trailer_id
+* assigned_at
+* unassigned_at
+* active
+
+Constraints
+
+* Only one active assignment per driver within a company
+* Only one active assignment per truck within a company
+* Only one active assignment per trailer within a company
 
 ---
 

@@ -6,15 +6,25 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+import app.database.session as db_session_module
+from app.ai.routes import router as ai_router
 from app.auth.routes import router as auth_router
+from app.cmr.routes import router as cmr_router
 from app.common.handlers import register_exception_handlers
 from app.common.routes import router as common_router
-from app.ai.routes import router as ai_router
-from app.cmr.routes import router as cmr_router
 from app.companies.routes import router as companies_router
+from app.config.logging import configure_logging
+from app.config.settings import Settings, get_settings
 from app.customers.routes import router as customers_router
+from app.database.redis import RedisClient
+from app.database.session import (
+    dispose_engine,
+    init_engine,
+    verify_database_connection,
+)
 from app.drivers.routes import router as drivers_router
 from app.fleet.routes import router as fleet_router
 from app.notifications.routes import router as notifications_router
@@ -27,11 +37,6 @@ from app.search.routes import router as search_router
 from app.trailers.routes import router as trailers_router
 from app.trucks.routes import router as trucks_router
 from app.users.routes import router as users_router
-from app.config.logging import configure_logging
-from app.config.settings import Settings, get_settings
-from app.database.redis import RedisClient
-from app.database.session import dispose_engine, get_db, init_engine, verify_database_connection
-import app.database.session as db_session_module
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +73,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     register_exception_handlers(application)
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=app_settings.cors_origin_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     application.include_router(
         common_router,

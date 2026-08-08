@@ -6,6 +6,7 @@ from app.companies.models import Company, CompanySettings
 from app.customers.models import Customer, CustomerContact
 from app.documents.models import Document
 from app.drivers.models import Driver
+from app.fleet.models import FleetAssignment
 from app.notifications.models import DeviceToken, Notification
 from app.orders.models import Order, OrderStop, OrderTimelineEntry, OrderVehicle
 from app.photos.models import VehiclePhoto
@@ -22,6 +23,7 @@ __all__ = [
     "DeviceToken",
     "Document",
     "Driver",
+    "FleetAssignment",
     "Notification",
     "Order",
     "OrderStop",

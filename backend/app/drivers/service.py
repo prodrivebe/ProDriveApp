@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.audit.service import AuditService
 from app.common.enums import OrderStatus, UserRole
 from app.common.exceptions import NotFoundError, ValidationError
 from app.common.tenant import ensure_same_company
@@ -58,6 +59,7 @@ class DriverService:
         self._trucks = TruckRepository(db)
         self._trailers = TrailerRepository(db)
         self._notifications = NotificationService(db)
+        self._audit_service = AuditService(db)
 
     def list_drivers(
         self,
@@ -91,6 +93,7 @@ class DriverService:
         self,
         current_user: User,
         payload: DriverCreateRequest,
+        ip_address: str | None,
     ) -> Driver:
         """Create a driver profile for a user."""
         user = self._users.get_by_id_for_company(payload.user_id, current_user.company_id)
@@ -111,21 +114,52 @@ class DriverService:
                 message="This user already has a driver profile.",
             )
 
-        return self._repository.create(
+        driver = self._repository.create(
             company_id=current_user.company_id,
             payload=payload,
             created_by=current_user.id,
         )
+        self._audit_service.record_driver_created(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(driver.id),
+            ip_address=ip_address,
+        )
+        return driver
 
     def update_driver(
         self,
         current_user: User,
         driver_id: uuid.UUID,
         payload: DriverUpdateRequest,
+        ip_address: str | None,
     ) -> Driver:
         """Update a driver profile."""
         driver = self.get_driver(current_user, driver_id)
-        return self._repository.update(driver, payload, current_user.id)
+        updated = self._repository.update(driver, payload, current_user.id)
+        self._audit_service.record_driver_updated(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(updated.id),
+            ip_address=ip_address,
+        )
+        return updated
+
+    def delete_driver(
+        self,
+        current_user: User,
+        driver_id: uuid.UUID,
+        ip_address: str | None,
+    ) -> None:
+        """Soft delete a driver profile."""
+        driver = self.get_driver(current_user, driver_id)
+        self._repository.soft_delete(driver, current_user.id)
+        self._audit_service.record_driver_deleted(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(driver.id),
+            ip_address=ip_address,
+        )
 
     def list_driver_orders(
         self,

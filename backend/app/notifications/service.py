@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.common.enums import UserRole
 from app.common.exceptions import NotFoundError
-from app.notifications.models import DeviceToken, Notification
 from app.notifications.device_token_repository import DeviceTokenRepository
+from app.notifications.models import DeviceToken, Notification
 from app.notifications.repository import NotificationRepository
 from app.users.models import User
 from app.users.repository import UserRepository

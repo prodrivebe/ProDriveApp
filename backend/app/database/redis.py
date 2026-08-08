@@ -1,5 +1,7 @@
 """Redis client infrastructure (prepared for future use)."""
 
+from __future__ import annotations
+
 from redis import Redis
 
 from app.config.settings import Settings

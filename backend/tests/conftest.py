@@ -9,13 +9,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import app.database.session as db_session_module
 from app.auth.security import hash_password
 from app.common.enums import UserRole
 from app.companies.models import Company, CompanySettings
 from app.config.settings import Settings
 from app.database.base import Base
 from app.database.session import get_db
-import app.database.session as db_session_module
 from app.main import create_app
 from app.users.models import User
 
@@ -82,7 +82,7 @@ def seed_test_data(db: Session, settings: Settings) -> tuple[Company, User, User
 
 
 @pytest.fixture
-def db_engine(test_settings: Settings) -> Generator[Engine, None, None]:
+def db_engine(test_settings: Settings) -> Generator[Engine]:
     """Create an isolated in-memory database engine."""
     engine = create_engine(
         test_settings.database_url,
@@ -95,7 +95,7 @@ def db_engine(test_settings: Settings) -> Generator[Engine, None, None]:
 
 
 @pytest.fixture
-def db_session(db_engine: Engine) -> Generator[Session, None, None]:
+def db_session(db_engine: Engine) -> Generator[Session]:
     """Provide a database session bound to the test engine."""
     session = sessionmaker(
         bind=db_engine,
@@ -111,7 +111,7 @@ def db_session(db_engine: Engine) -> Generator[Session, None, None]:
 def client(
     test_settings: Settings,
     db_engine: Engine,
-) -> Generator[TestClient, None, None]:
+) -> Generator[TestClient]:
     """Return a test client with an isolated in-memory database."""
     testing_session_local = sessionmaker(
         bind=db_engine,
@@ -131,7 +131,7 @@ def client(
 
     application = create_app(test_settings)
 
-    def override_get_db() -> Generator[Session, None, None]:
+    def override_get_db() -> Generator[Session]:
         db = testing_session_local()
         try:
             yield db

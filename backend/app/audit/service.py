@@ -448,6 +448,204 @@ class AuditService:
             ip_address=ip_address,
         )
 
+    def record_driver_created(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record driver creation."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="driver",
+            entity_id=entity_id,
+            action="DRIVER_CREATED",
+            ip_address=ip_address,
+        )
+
+    def record_driver_updated(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record driver update."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="driver",
+            entity_id=entity_id,
+            action="DRIVER_UPDATED",
+            ip_address=ip_address,
+        )
+
+    def record_driver_deleted(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record driver soft delete."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="driver",
+            entity_id=entity_id,
+            action="DRIVER_DELETED",
+            ip_address=ip_address,
+        )
+
+    def record_truck_created(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record truck creation."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="truck",
+            entity_id=entity_id,
+            action="TRUCK_CREATED",
+            ip_address=ip_address,
+        )
+
+    def record_truck_updated(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record truck update."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="truck",
+            entity_id=entity_id,
+            action="TRUCK_UPDATED",
+            ip_address=ip_address,
+        )
+
+    def record_truck_deleted(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record truck soft delete."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="truck",
+            entity_id=entity_id,
+            action="TRUCK_DELETED",
+            ip_address=ip_address,
+        )
+
+    def record_trailer_created(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record trailer creation."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="trailer",
+            entity_id=entity_id,
+            action="TRAILER_CREATED",
+            ip_address=ip_address,
+        )
+
+    def record_trailer_updated(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record trailer update."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="trailer",
+            entity_id=entity_id,
+            action="TRAILER_UPDATED",
+            ip_address=ip_address,
+        )
+
+    def record_trailer_deleted(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record trailer soft delete."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="trailer",
+            entity_id=entity_id,
+            action="TRAILER_DELETED",
+            ip_address=ip_address,
+        )
+
+    def record_assignment_created(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record fleet assignment creation."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="fleet_assignment",
+            entity_id=entity_id,
+            action="ASSIGNMENT_CREATED",
+            ip_address=ip_address,
+        )
+
+    def record_assignment_removed(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record fleet assignment removal."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="fleet_assignment",
+            entity_id=entity_id,
+            action="ASSIGNMENT_REMOVED",
+            ip_address=ip_address,
+        )
+
     def record_vehicle_vin_updated(
         self,
         *,

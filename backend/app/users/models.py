@@ -1,7 +1,10 @@
 """User database model."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,6 +13,9 @@ from sqlalchemy.types import Uuid
 from app.common.enums import UserRole
 from app.common.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.companies.models import Company
 
 
 class User(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
@@ -48,4 +54,4 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         nullable=True,
     )
 
-    company: Mapped["Company"] = relationship(back_populates="users")
+    company: Mapped[Company] = relationship(back_populates="users")

@@ -8,7 +8,11 @@ from sqlalchemy.orm import Session
 from app.common.responses import SuccessResponse, success_response
 from app.database.session import get_db
 from app.orders.permissions import require_order_manager
-from app.orders.schemas import OrderVehicleResponse, OrderVehicleUpdateRequest, VinUpdateRequest
+from app.orders.schemas import (
+    OrderVehicleResponse,
+    OrderVehicleUpdateRequest,
+    VinUpdateRequest,
+)
 from app.orders.service import OrderService
 from app.users.models import User
 

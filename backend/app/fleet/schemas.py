@@ -1,6 +1,9 @@
-"""Fleet overview schemas."""
+"""Fleet schemas."""
 
-from pydantic import BaseModel
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class FleetEntitySummary(BaseModel):
@@ -16,3 +19,26 @@ class FleetOverviewResponse(BaseModel):
     drivers: FleetEntitySummary
     trucks: FleetEntitySummary
     trailers: FleetEntitySummary
+
+
+class FleetAssignmentCreateRequest(BaseModel):
+    """Payload for creating a fleet assignment."""
+
+    driver_id: uuid.UUID
+    truck_id: uuid.UUID
+    trailer_id: uuid.UUID
+
+
+class FleetAssignmentResponse(BaseModel):
+    """Fleet assignment response payload."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    company_id: uuid.UUID
+    driver_id: uuid.UUID
+    truck_id: uuid.UUID
+    trailer_id: uuid.UUID
+    assigned_at: datetime
+    unassigned_at: datetime | None
+    active: bool

@@ -63,7 +63,7 @@ def verify_database_connection() -> None:
         connection.execute(text("SELECT 1"))
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     """Provide a database session for request-scoped dependencies."""
     if SessionLocal is None:
         msg = "Database session factory has not been initialized."

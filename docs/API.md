@@ -274,10 +274,34 @@ PUT
 /drivers/{id}
 ```
 
+DELETE
+
+```
+/drivers/{id}
+```
+
 GET
 
 ```
 /drivers/{id}/orders
+```
+
+GET
+
+```
+/drivers/me
+```
+
+GET
+
+```
+/drivers/me/orders
+```
+
+GET
+
+```
+/drivers/me/home
 ```
 
 ---
@@ -294,6 +318,12 @@ POST
 
 ```
 /trucks
+```
+
+GET
+
+```
+/trucks/{id}
 ```
 
 PUT
@@ -324,6 +354,12 @@ POST
 /trailers
 ```
 
+GET
+
+```
+/trailers/{id}
+```
+
 PUT
 
 ```
@@ -338,7 +374,41 @@ DELETE
 
 ---
 
-# 13. Customer Endpoints
+# 13. Fleet Assignment Endpoints
+
+GET
+
+```
+/fleet/overview
+```
+
+GET
+
+```
+/fleet/assignments
+```
+
+GET
+
+```
+/fleet/assignments/me
+```
+
+POST
+
+```
+/fleet/assignments
+```
+
+DELETE
+
+```
+/fleet/assignments/{id}
+```
+
+---
+
+# 14. Customer Endpoints
 
 GET
 
@@ -372,7 +442,7 @@ DELETE
 
 ---
 
-# 14. Order Endpoints
+# 15. Order Endpoints
 
 Create order
 
@@ -418,7 +488,7 @@ Soft delete only.
 
 ---
 
-# 15. Order Workflow Endpoints
+# 16. Order Workflow Endpoints
 
 Assign Driver
 
@@ -488,7 +558,7 @@ Workflow actions are preferred over generic status updates.
 
 ---
 
-# 16. Stop Endpoints
+# 17. Stop Endpoints
 
 GET
 
@@ -516,7 +586,7 @@ DELETE
 
 ---
 
-# 17. Vehicle Endpoints
+# 18. Vehicle Endpoints
 
 GET
 
@@ -544,7 +614,7 @@ DELETE
 
 ---
 
-# 18. VIN Endpoints
+# 19. VIN Endpoints
 
 Scan VIN
 
@@ -566,7 +636,7 @@ VIN changes are always audited.
 
 ---
 
-# 19. Photo Endpoints
+# 20. Photo Endpoints
 
 Upload
 
@@ -596,7 +666,7 @@ Uploads use multipart/form-data.
 
 ---
 
-# 20. CMR Endpoints
+# 21. CMR Endpoints
 
 Generate
 
@@ -624,7 +694,7 @@ POST
 
 ---
 
-# 21. Timeline Endpoints
+# 22. Timeline Endpoints
 
 GET
 
@@ -638,7 +708,7 @@ Timeline entries are generated automatically.
 
 ---
 
-# 22. AI Endpoints
+# 23. AI Endpoints
 
 Parse Customer Request
 
@@ -676,7 +746,7 @@ AI endpoints never modify business data.
 
 ---
 
-# 23. Notification Endpoints
+# 24. Notification Endpoints
 
 GET
 
@@ -698,7 +768,7 @@ POST
 
 ---
 
-# 24. Search Endpoint
+# 25. Search Endpoint
 
 Global search
 
@@ -723,7 +793,7 @@ One search bar.
 
 ---
 
-# 25. HTTP Status Codes
+# 26. HTTP Status Codes
 
 200
 
@@ -767,7 +837,7 @@ Internal Server Error
 
 ---
 
-# 26. Validation
+# 27. Validation
 
 Every request is validated.
 
@@ -777,7 +847,7 @@ Validation errors return structured responses.
 
 ---
 
-# 27. Permissions
+# 28. Permissions
 
 Every endpoint declares required roles.
 
@@ -795,7 +865,7 @@ Permission checks occur in the backend only.
 
 ---
 
-# 28. API Documentation
+# 29. API Documentation
 
 Swagger
 
@@ -813,7 +883,7 @@ Documentation is generated automatically from the code.
 
 ---
 
-# 29. Versioning Rules
+# 30. Versioning Rules
 
 Breaking changes require:
 
@@ -825,7 +895,7 @@ Deprecated endpoints remain available during migration periods.
 
 ---
 
-# 30. Final Principle
+# 31. Final Principle
 
 The API represents business operations, not database tables.
 

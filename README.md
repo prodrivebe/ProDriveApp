@@ -23,6 +23,7 @@ backend/
 driver_app/
 dispatcher-dashboard/
 docs/
+specs/
 design/
 deployment/
 ```
@@ -69,7 +70,9 @@ Infrastructure
 
 Version: 0.1 Alpha
 
-Project is under active development.
+Sprint 2 (Dispatcher Dashboard) and Sprint 3 (Fleet Management) are complete and stabilized.
+
+Backend: 72 tests passing. Dispatcher dashboard consumes the API via JWT.
 
 ---
 
@@ -92,6 +95,18 @@ Services:
 | Postgres | localhost:5432              |
 | Redis    | localhost:6379              |
 
+### Dispatcher dashboard
+
+```bash
+cd dispatcher-dashboard
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 (requires backend at http://localhost:8000).
+
+See [dispatcher-dashboard/README.md](dispatcher-dashboard/README.md).
+
 ### Backend without Docker
 
 See [backend/README.md](backend/README.md) for Python setup, migrations, tests, and linting.
@@ -110,11 +125,13 @@ Ensure PostgreSQL and Redis are running and configured in `.env`.
 
 ## Development Workflow
 
-1. Select a task from TASKS.md
-2. Implement the feature
-3. Run tests
-4. Commit changes
-5. Open a pull request (if applicable)
+1. Read the relevant spec in `specs/`
+2. Select or update a task in `docs/TASKS.md`
+3. Implement against acceptance criteria in the spec
+4. Run tests
+5. Update spec status and Definition of Done
+6. Commit changes
+7. Open a pull request (if applicable)
 
 ---
 

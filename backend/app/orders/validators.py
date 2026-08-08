@@ -1,7 +1,6 @@
 """Order validation helpers."""
 
 import re
-import uuid
 
 from app.common.enums import OrderStatus, StopType, UserRole
 from app.common.exceptions import AuthorizationError, ValidationError

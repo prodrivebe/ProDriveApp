@@ -10,9 +10,10 @@ from app.common.exceptions import NotFoundError, ValidationError
 from app.common.tenant import ensure_same_company
 from app.companies.repository import CompanyRepository
 from app.customers.repository import CustomerRepository
+from app.drivers.models import Driver
 from app.drivers.repository import DriverRepository
 from app.notifications.service import NotificationService
-from app.orders.models import Order, OrderStop, OrderVehicle
+from app.orders.models import Order, OrderStop, OrderTimelineEntry, OrderVehicle
 from app.orders.repository import (
     OrderRepository,
     OrderStopRepository,
@@ -157,10 +158,9 @@ class OrderService:
             )
 
         for vehicle_payload in payload.vehicles:
-            if vehicle_payload.vin:
-                vin = normalize_vin(vehicle_payload.vin)
-            else:
-                vin = None
+            vin = (
+                normalize_vin(vehicle_payload.vin) if vehicle_payload.vin else None
+            )
             if created_stops:
                 validate_vehicle_stop_links(created_stops, vehicle_payload)
             self._vehicles.create(
@@ -555,7 +555,11 @@ class OrderService:
         )
         return self.get_order(current_user, updated_order.id)
 
-    def list_timeline(self, current_user: User, order_id: uuid.UUID):
+    def list_timeline(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+    ) -> list[OrderTimelineEntry]:
         """Return timeline entries for an order."""
         self.get_order(current_user, order_id)
         return self._timeline.list_for_order(order_id, current_user.company_id)
@@ -642,7 +646,7 @@ class OrderService:
             notification_type="ORDER_COMPLETED",
         )
 
-    def _get_assigned_driver(self, order: Order):
+    def _get_assigned_driver(self, order: Order) -> Driver | None:
         if order.assigned_driver_id is None:
             return None
         return self._drivers.get_by_id_for_company(
@@ -709,3 +713,4 @@ class OrderService:
             description=description,
             created_by=current_user.id,
         )
+

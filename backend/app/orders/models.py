@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
-from app.common.enums import OrderStatus, StopType
+from app.common.enums import OrderStatus
 from app.common.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from app.database.base import Base
 
@@ -74,15 +74,15 @@ class Order(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
 
-    stops: Mapped[list["OrderStop"]] = relationship(
+    stops: Mapped[list[OrderStop]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
     )
-    vehicles: Mapped[list["OrderVehicle"]] = relationship(
+    vehicles: Mapped[list[OrderVehicle]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
     )
-    timeline_entries: Mapped[list["OrderTimelineEntry"]] = relationship(
+    timeline_entries: Mapped[list[OrderTimelineEntry]] = relationship(
         back_populates="order",
         cascade="all, delete-orphan",
     )
@@ -124,7 +124,7 @@ class OrderStop(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
 
-    order: Mapped["Order"] = relationship(back_populates="stops")
+    order: Mapped[Order] = relationship(back_populates="stops")
 
 
 class OrderVehicle(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
@@ -170,7 +170,7 @@ class OrderVehicle(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
 
-    order: Mapped["Order"] = relationship(back_populates="vehicles")
+    order: Mapped[Order] = relationship(back_populates="vehicles")
 
 
 class OrderTimelineEntry(Base, UUIDPrimaryKeyMixin):
@@ -198,4 +198,4 @@ class OrderTimelineEntry(Base, UUIDPrimaryKeyMixin):
         nullable=False,
     )
 
-    order: Mapped["Order"] = relationship(back_populates="timeline_entries")
+    order: Mapped[Order] = relationship(back_populates="timeline_entries")

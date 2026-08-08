@@ -116,16 +116,26 @@ Supported roles: `ADMIN`, `DISPATCHER`, `DRIVER`.
 | POST | `/api/v1/drivers` | Admin, Dispatcher | Create driver profile |
 | GET | `/api/v1/drivers/{id}` | Admin, Dispatcher | Read driver profile |
 | PUT | `/api/v1/drivers/{id}` | Admin, Dispatcher | Update driver profile |
-| GET | `/api/v1/drivers/{id}/orders` | Admin, Dispatcher | List driver orders (empty until orders module) |
+| DELETE | `/api/v1/drivers/{id}` | Admin, Dispatcher | Soft delete driver profile |
+| GET | `/api/v1/drivers/me` | Driver | Read own driver profile |
+| GET | `/api/v1/drivers/me/orders` | Driver | List own assigned orders |
+| GET | `/api/v1/drivers/me/home` | Driver | Driver home screen payload |
+| GET | `/api/v1/drivers/{id}/orders` | Admin, Dispatcher | List driver orders |
 | GET | `/api/v1/trucks` | Admin, Dispatcher | List trucks |
 | POST | `/api/v1/trucks` | Admin, Dispatcher | Create truck |
+| GET | `/api/v1/trucks/{id}` | Admin, Dispatcher | Read truck |
 | PUT | `/api/v1/trucks/{id}` | Admin, Dispatcher | Update truck |
 | DELETE | `/api/v1/trucks/{id}` | Admin, Dispatcher | Soft delete truck |
 | GET | `/api/v1/trailers` | Admin, Dispatcher | List trailers |
 | POST | `/api/v1/trailers` | Admin, Dispatcher | Create trailer |
+| GET | `/api/v1/trailers/{id}` | Admin, Dispatcher | Read trailer |
 | PUT | `/api/v1/trailers/{id}` | Admin, Dispatcher | Update trailer |
 | DELETE | `/api/v1/trailers/{id}` | Admin, Dispatcher | Soft delete trailer |
 | GET | `/api/v1/fleet/overview` | Admin, Dispatcher | Fleet counts summary |
+| GET | `/api/v1/fleet/assignments` | Admin, Dispatcher | List standing fleet assignments |
+| GET | `/api/v1/fleet/assignments/me` | Driver | Read own active assignment |
+| POST | `/api/v1/fleet/assignments` | Admin, Dispatcher | Create standing assignment |
+| DELETE | `/api/v1/fleet/assignments/{id}` | Admin, Dispatcher | Deactivate assignment |
 
 Driver profiles link to users with the `DRIVER` role. Trailer capacity must be one of `2`, `3`, `5`, `8`, or `10`.
 

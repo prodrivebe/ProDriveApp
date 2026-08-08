@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,6 +11,9 @@ from sqlalchemy.types import Uuid
 
 from app.common.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.users.models import User
 
 
 class Driver(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
@@ -40,4 +44,4 @@ class Driver(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
 
-    user: Mapped["User"] = relationship()
+    user: Mapped[User] = relationship()

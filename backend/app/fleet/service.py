@@ -19,11 +19,10 @@ class FleetOverviewService:
 
     def get_overview(self, current_user: User) -> FleetOverviewResponse:
         """Return fleet overview for the current company."""
-        driver_total, driver_active = self._drivers.count_for_company(current_user.company_id)
-        truck_total, truck_active = self._trucks.count_for_company(current_user.company_id)
-        trailer_total, trailer_active = self._trailers.count_for_company(
-            current_user.company_id
-        )
+        company_id = current_user.company_id
+        driver_total, driver_active = self._drivers.count_for_company(company_id)
+        truck_total, truck_active = self._trucks.count_for_company(company_id)
+        trailer_total, trailer_active = self._trailers.count_for_company(company_id)
         return FleetOverviewResponse(
             drivers=FleetEntitySummary(total=driver_total, active=driver_active),
             trucks=FleetEntitySummary(total=truck_total, active=truck_active),

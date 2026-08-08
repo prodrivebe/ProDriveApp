@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.audit.service import AuditService
 from app.common.exceptions import NotFoundError, ValidationError
 from app.common.tenant import ensure_same_company
 from app.trailers.models import Trailer
@@ -21,6 +22,7 @@ class TrailerService:
     def __init__(self, db: Session) -> None:
         self._db = db
         self._repository = TrailerRepository(db)
+        self._audit_service = AuditService(db)
 
     def list_trailers(
         self,
@@ -57,6 +59,7 @@ class TrailerService:
         self,
         current_user: User,
         payload: TrailerCreateRequest,
+        ip_address: str | None,
     ) -> Trailer:
         """Create a trailer in the current company."""
         validate_trailer_capacity(payload.maximum_vehicle_count)
@@ -69,17 +72,25 @@ class TrailerService:
                 code="REGISTRATION_ALREADY_EXISTS",
                 message="A trailer with this registration number already exists.",
             )
-        return self._repository.create(
+        trailer = self._repository.create(
             company_id=current_user.company_id,
             payload=payload,
             created_by=current_user.id,
         )
+        self._audit_service.record_trailer_created(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(trailer.id),
+            ip_address=ip_address,
+        )
+        return trailer
 
     def update_trailer(
         self,
         current_user: User,
         trailer_id: uuid.UUID,
         payload: TrailerUpdateRequest,
+        ip_address: str | None,
     ) -> Trailer:
         """Update a trailer in the current company."""
         validate_trailer_capacity(payload.maximum_vehicle_count)
@@ -94,9 +105,27 @@ class TrailerService:
                     code="REGISTRATION_ALREADY_EXISTS",
                     message="A trailer with this registration number already exists.",
                 )
-        return self._repository.update(trailer, payload, current_user.id)
+        updated = self._repository.update(trailer, payload, current_user.id)
+        self._audit_service.record_trailer_updated(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(updated.id),
+            ip_address=ip_address,
+        )
+        return updated
 
-    def delete_trailer(self, current_user: User, trailer_id: uuid.UUID) -> None:
+    def delete_trailer(
+        self,
+        current_user: User,
+        trailer_id: uuid.UUID,
+        ip_address: str | None,
+    ) -> None:
         """Soft delete a trailer in the current company."""
         trailer = self.get_trailer(current_user, trailer_id)
         self._repository.soft_delete(trailer, current_user.id)
+        self._audit_service.record_trailer_deleted(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(trailer.id),
+            ip_address=ip_address,
+        )

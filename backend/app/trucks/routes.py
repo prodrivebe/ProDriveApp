@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.common.pagination import build_list_meta
@@ -14,6 +14,16 @@ from app.trucks.service import TruckService
 from app.users.models import User
 
 router = APIRouter(prefix="/trucks", tags=["Trucks"])
+
+
+def get_client_ip(request: Request) -> str | None:
+    """Extract the client IP address from the request."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    if request.client is not None:
+        return request.client.host
+    return None
 
 
 def get_truck_service(db: Session = Depends(get_db)) -> TruckService:
@@ -45,11 +55,23 @@ def list_trucks(
 @router.post("", response_model=SuccessResponse[TruckResponse], status_code=201)
 def create_truck(
     payload: TruckCreateRequest,
+    request: Request,
     current_user: User = Depends(require_fleet_manager),
     truck_service: TruckService = Depends(get_truck_service),
 ) -> SuccessResponse[TruckResponse]:
     """Create a truck."""
-    truck = truck_service.create_truck(current_user, payload)
+    truck = truck_service.create_truck(current_user, payload, get_client_ip(request))
+    return success_response(TruckResponse.model_validate(truck))
+
+
+@router.get("/{truck_id}", response_model=SuccessResponse[TruckResponse])
+def get_truck(
+    truck_id: uuid.UUID,
+    current_user: User = Depends(require_fleet_manager),
+    truck_service: TruckService = Depends(get_truck_service),
+) -> SuccessResponse[TruckResponse]:
+    """Return a truck."""
+    truck = truck_service.get_truck(current_user, truck_id)
     return success_response(TruckResponse.model_validate(truck))
 
 
@@ -57,20 +79,27 @@ def create_truck(
 def update_truck(
     truck_id: uuid.UUID,
     payload: TruckUpdateRequest,
+    request: Request,
     current_user: User = Depends(require_fleet_manager),
     truck_service: TruckService = Depends(get_truck_service),
 ) -> SuccessResponse[TruckResponse]:
     """Update a truck."""
-    truck = truck_service.update_truck(current_user, truck_id, payload)
+    truck = truck_service.update_truck(
+        current_user,
+        truck_id,
+        payload,
+        get_client_ip(request),
+    )
     return success_response(TruckResponse.model_validate(truck))
 
 
 @router.delete("/{truck_id}", response_model=SuccessResponse[dict[str, str]])
 def delete_truck(
     truck_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_fleet_manager),
     truck_service: TruckService = Depends(get_truck_service),
 ) -> SuccessResponse[dict[str, str]]:
     """Soft delete a truck."""
-    truck_service.delete_truck(current_user, truck_id)
+    truck_service.delete_truck(current_user, truck_id, get_client_ip(request))
     return success_response({"message": "Truck deleted successfully."})

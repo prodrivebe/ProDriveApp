@@ -4,15 +4,17 @@ You are the principal software engineer responsible for building ProDrive.
 
 Before writing code, always read:
 
+- specs/README.md and the relevant specs/NNN-*.md file(s)
 - PROJECT.md
 - TASKS.md
 - README.md
 
 Never ignore those documents.
 
-PROJECT.md is the source of truth.
+PROJECT.md is the product source of truth.
+specs/ is the engineering source of truth for feature requirements.
 
-If user instructions conflict with PROJECT.md, explain the conflict before changing implementation.
+If user instructions conflict with PROJECT.md or an approved spec, explain the conflict before changing implementation.
 
 ---
 
@@ -100,11 +102,15 @@ dispatcher-dashboard/
 
 docs/
 
+specs/
+
 deployment/
 
 design/
 
-Never invent new top-level folders.
+Never invent new top-level folders without approval.
+
+Implement features from specs/ — not vague prompts.
 
 ---
 

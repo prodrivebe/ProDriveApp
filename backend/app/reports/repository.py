@@ -9,8 +9,6 @@ from app.common.enums import OrderStatus
 from app.customers.models import Customer
 from app.drivers.models import Driver
 from app.orders.models import Order
-from app.trailers.models import Trailer
-from app.trucks.models import Truck
 from app.users.models import User
 
 
@@ -30,7 +28,10 @@ class ReportRepository:
         rows = self._db.execute(statement).all()
         return {status: int(count) for status, count in rows}
 
-    def driver_activity(self, company_id: uuid.UUID) -> list[tuple]:
+    def driver_activity(
+        self,
+        company_id: uuid.UUID,
+    ) -> list[tuple[uuid.UUID, str, str, int, int, int]]:
         """Return driver activity aggregates joined with user names."""
         assigned = func.count(Order.id)
         completed = func.sum(
@@ -73,9 +74,22 @@ class ReportRepository:
             .group_by(Driver.id, User.first_name, User.last_name)
             .order_by(assigned.desc())
         )
-        return list(self._db.execute(statement).all())
+        return [
+            (
+                row[0],
+                row[1],
+                row[2],
+                int(row[3]),
+                int(row[4] or 0),
+                int(row[5] or 0),
+            )
+            for row in self._db.execute(statement).all()
+        ]
 
-    def customer_activity(self, company_id: uuid.UUID) -> list[tuple]:
+    def customer_activity(
+        self,
+        company_id: uuid.UUID,
+    ) -> list[tuple[uuid.UUID, str, int, int]]:
         """Return customer activity aggregates."""
         total_orders = func.count(Order.id)
         completed_orders = func.sum(
@@ -98,7 +112,10 @@ class ReportRepository:
             .group_by(Customer.id, Customer.company_name)
             .order_by(total_orders.desc())
         )
-        return list(self._db.execute(statement).all())
+        return [
+            (row[0], row[1], int(row[2]), int(row[3] or 0))
+            for row in self._db.execute(statement).all()
+        ]
 
     def count_customers(self, company_id: uuid.UUID) -> int:
         """Return total active customers."""

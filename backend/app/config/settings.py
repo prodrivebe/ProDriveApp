@@ -76,6 +76,15 @@ class Settings(BaseSettings):
     max_logo_size_mb: int = Field(default=5, alias="MAX_LOGO_SIZE_MB")
     max_photo_size_mb: int = Field(default=10, alias="MAX_PHOTO_SIZE_MB")
     max_document_size_mb: int = Field(default=15, alias="MAX_DOCUMENT_SIZE_MB")
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173",
+        alias="CORS_ORIGINS",
+    )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Return parsed CORS origin URLs."""
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @computed_field  # type: ignore[prop-decorator]
     @property

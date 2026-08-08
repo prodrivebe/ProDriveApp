@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.drivers.models import Driver
 from app.drivers.schemas import DriverCreateRequest, DriverUpdateRequest
+from app.users.models import User
 
 
 class DriverRepository:
@@ -55,21 +56,36 @@ class DriverRepository:
         filters = [Driver.company_id == company_id, Driver.deleted_at.is_(None)]
         if active is not None:
             filters.append(Driver.active.is_(active))
+
+        search_filter = None
         if search:
             pattern = f"%{search.strip()}%"
-            filters.append(
+            search_filter = (
                 (Driver.phone.ilike(pattern))
                 | (Driver.driving_license.ilike(pattern))
                 | (Driver.notes.ilike(pattern))
+                | (User.first_name.ilike(pattern))
+                | (User.last_name.ilike(pattern))
             )
 
-        total = int(
-            self._db.scalar(select(func.count()).select_from(Driver).where(*filters)) or 0
-        )
+        count_statement = select(func.count()).select_from(Driver)
+        list_statement = select(Driver)
+        if search_filter is not None:
+            count_statement = count_statement.join(User, Driver.user_id == User.id).where(
+                *filters,
+                search_filter,
+            )
+            list_statement = list_statement.join(User, Driver.user_id == User.id).where(
+                *filters,
+                search_filter,
+            )
+        else:
+            count_statement = count_statement.where(*filters)
+            list_statement = list_statement.where(*filters)
+
+        total = int(self._db.scalar(count_statement) or 0)
         statement = (
-            select(Driver)
-            .where(*filters)
-            .order_by(Driver.created_at.desc())
+            list_statement.order_by(Driver.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -111,6 +127,16 @@ class DriverRepository:
             created_by=created_by,
             updated_by=created_by,
         )
+        self._db.add(driver)
+        self._db.commit()
+        self._db.refresh(driver)
+        return driver
+
+    def soft_delete(self, driver: Driver, deleted_by: uuid.UUID) -> Driver:
+        """Soft delete a driver profile."""
+        driver.deleted_at = datetime.now(tz=UTC)
+        driver.active = False
+        driver.updated_by = deleted_by
         self._db.add(driver)
         self._db.commit()
         self._db.refresh(driver)

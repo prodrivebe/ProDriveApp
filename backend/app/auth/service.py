@@ -1,6 +1,5 @@
 """Authentication business logic."""
 
-import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session

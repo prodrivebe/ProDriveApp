@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.ai.schemas import (
     OrderQualityResponse,
     OrderScopedRequest,
-    ParseOrderRequest,
     ParsedOrderDraft,
+    ParseOrderRequest,
     SuggestDriverResponse,
     SuggestEmptyKmResponse,
     SuggestLoadingResponse,

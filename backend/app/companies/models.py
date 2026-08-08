@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,6 +11,9 @@ from sqlalchemy.types import Uuid
 
 from app.common.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.users.models import User
 
 
 class Company(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -26,8 +30,8 @@ class Company(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     subscription_plan: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    users: Mapped[list["User"]] = relationship(back_populates="company")
-    settings: Mapped["CompanySettings | None"] = relationship(
+    users: Mapped[list[User]] = relationship(back_populates="company")
+    settings: Mapped[CompanySettings | None] = relationship(
         back_populates="company",
         uselist=False,
     )
@@ -62,4 +66,4 @@ class CompanySettings(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     accent_color: Mapped[str] = mapped_column(String(7), nullable=False, default="#00A3E0")
     dashboard_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    company: Mapped["Company"] = relationship(back_populates="settings")
+    company: Mapped[Company] = relationship(back_populates="settings")

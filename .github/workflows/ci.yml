@@ -24,3 +24,9 @@ jobs:
 
       - name: Pytest
         run: python -m pytest -q
+
+      - name: Ruff
+        run: ruff check app tests
+
+      - name: Mypy
+        run: mypy app

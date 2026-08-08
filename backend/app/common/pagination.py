@@ -3,9 +3,7 @@
 import math
 from typing import Any
 
-from pydantic import BaseModel, Field
-
-from app.common.responses import SuccessResponse, success_response
+from pydantic import BaseModel
 
 
 class PaginationMeta(BaseModel):

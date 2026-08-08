@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.common.pagination import build_list_meta
 from app.common.responses import SuccessResponse, success_response
 from app.customers.permissions import require_customer_manager
-from app.orders.schemas import OrderSummaryResponse
 from app.customers.schemas import (
     CustomerContactCreateRequest,
     CustomerContactResponse,
@@ -19,6 +18,7 @@ from app.customers.schemas import (
 )
 from app.customers.service import CustomerService
 from app.database.session import get_db
+from app.orders.schemas import OrderSummaryResponse
 from app.users.models import User
 
 router = APIRouter(prefix="/customers", tags=["Customers"])

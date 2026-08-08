@@ -10,6 +10,7 @@ from app.common.enums import PhotoType
 from app.common.exceptions import NotFoundError
 from app.common.storage.local import LocalFileStorage
 from app.config.settings import Settings
+from app.orders.models import OrderVehicle
 from app.orders.repository import OrderVehicleRepository
 from app.orders.service import OrderService
 from app.photos.models import VehiclePhoto
@@ -74,7 +75,7 @@ class VehiclePhotoService:
         self._storage.delete_file(photo.file_path)
         self._photos.delete(photo)
 
-    def _get_vehicle(self, current_user: User, vehicle_id: uuid.UUID):
+    def _get_vehicle(self, current_user: User, vehicle_id: uuid.UUID) -> OrderVehicle:
         vehicle = self._vehicles.get_by_id_for_company(vehicle_id, current_user.company_id)
         if vehicle is None:
             raise NotFoundError(code="VEHICLE_NOT_FOUND", message="Vehicle not found.")

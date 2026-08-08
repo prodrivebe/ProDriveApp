@@ -55,7 +55,11 @@ class SearchRepository:
         )
         return list(self._db.scalars(statement).all())
 
-    def search_drivers(self, company_id: uuid.UUID, query: str) -> list[tuple]:
+    def search_drivers(
+        self,
+        company_id: uuid.UUID,
+        query: str,
+    ) -> list[tuple[Driver, User]]:
         """Search drivers by user name or phone."""
         pattern = f"%{query.strip()}%"
         statement = (
@@ -74,7 +78,7 @@ class SearchRepository:
             )
             .limit(SEARCH_LIMIT)
         )
-        return list(self._db.execute(statement).all())
+        return [(row[0], row[1]) for row in self._db.execute(statement).all()]
 
     def search_vehicles(self, company_id: uuid.UUID, query: str) -> list[OrderVehicle]:
         """Search vehicles by VIN, make, or model."""
