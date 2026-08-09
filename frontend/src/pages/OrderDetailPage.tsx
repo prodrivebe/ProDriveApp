@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Alert,
@@ -35,17 +35,25 @@ import { TimelineViewer } from "../components/TimelineViewer";
 import { formatDate, formatDateTime, formatStopCities } from "../utils/format";
 import { resolveUploadUrl } from "../app/config";
 import type { VehiclePhoto } from "../types/api";
+import { useRealtime } from "../hooks/useRealtime";
 
 const TABS = ["Overview", "Vehicles", "Timeline", "Photos", "Documents", "Damage"] as const;
 
 export function OrderDetailPage() {
   const { orderId = "" } = useParams();
+  const { subscribeOrder } = useRealtime();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState(0);
   const [driverId, setDriverId] = useState("");
   const [truckId, setTruckId] = useState("");
   const [trailerId, setTrailerId] = useState("");
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (orderId) {
+      subscribeOrder(orderId);
+    }
+  }, [orderId, subscribeOrder]);
 
   const orderQuery = useQuery({
     queryKey: ["orders", orderId],

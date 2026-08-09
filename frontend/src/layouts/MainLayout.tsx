@@ -27,6 +27,7 @@ import { useAuth } from "../hooks/useAuth";
 import { usePermissions } from "../hooks/usePermissions";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { NotificationBell } from "../components/NotificationBell";
+import { ConnectionStatus } from "../components/ConnectionStatus";
 
 const drawerWidth = 248;
 
@@ -104,6 +105,7 @@ export function MainLayout() {
           </Typography>
           {!isMobile ? <GlobalSearch /> : null}
           <Box sx={{ flex: 1 }} />
+          <ConnectionStatus />
           <NotificationBell />
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
             {user?.first_name} {user?.last_name}

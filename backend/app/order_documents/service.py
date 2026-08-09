@@ -20,6 +20,8 @@ from app.order_documents.models import OrderDocument
 from app.order_documents.repository import OrderDocumentRepository
 from app.order_timeline.service import OrderTimelineService
 from app.orders.repository import OrderRepository
+from app.realtime.publisher import publish_vehicle_execution_event
+from app.realtime.schemas import RealtimeEventType
 from app.users.models import User
 
 
@@ -135,6 +137,18 @@ class OrderDocumentService:
                 message=f"CMR uploaded for order {order.order_number}.",
                 notification_type="CMR_UPLOADED",
             )
+        publish_vehicle_execution_event(
+            company_id=current_user.company_id,
+            order_id=order_id,
+            event_type=(
+                RealtimeEventType.CMR_UPLOADED
+                if document_type == OrderDocumentType.CMR
+                else RealtimeEventType.DOCUMENT_UPLOADED
+            ),
+            order_number=order.order_number,
+            extra={"document_id": str(document.id), "document_type": document_type.value},
+            driver_user_id=current_user.id,
+        )
         return document
 
     def delete_document(

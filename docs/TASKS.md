@@ -191,7 +191,25 @@
 * [x] Driver app tests (unit/widget)
 * [ ] VIN scanner (camera OCR — out of Sprint 8 scope)
 * [ ] GPS tracking (deferred)
-* [ ] Push notifications FCM (deferred to Sprint 9)
+* [ ] Push notifications FCM (deferred to Sprint 10)
+
+---
+
+## Sprint 9 — Real-Time Operations
+
+* [x] WebSocket infrastructure with JWT authentication
+* [x] Redis pub/sub event service
+* [x] Company-isolated channels (company, dispatcher, driver, order, notifications)
+* [x] Domain event publishing from workflow and execution services
+* [x] Presence tracking (`GET /realtime/presence`)
+* [x] Dispatcher Operations Board live kanban columns
+* [x] React WebSocket client with reconnect + TanStack Query invalidation
+* [x] Flutter WebSocket client with Riverpod invalidation
+* [x] Real-time notifications and timeline streaming
+* [x] Backend/frontend/driver tests
+* [ ] GPS tracking (deferred)
+* [ ] Route optimization (deferred)
+* [ ] AI live recommendations (deferred)
 
 ---
 

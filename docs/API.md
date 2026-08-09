@@ -1179,6 +1179,74 @@ Dispatcher/admin accounts should use the web app; the mobile app is workflow-foc
 
 ---
 
+# 32. Real-Time WebSocket API
+
+Sprint 9 adds authenticated WebSocket connections for live operational visibility.
+
+## Connect
+
+```
+WS /api/v1/ws?token={access_token}
+```
+
+Authentication uses the same JWT access token as REST.
+
+## Client messages
+
+```json
+{"action":"ping"}
+{"action":"subscribe","channel":"order","order_id":"..."}
+{"action":"presence","status":"in_transit","active_order_id":"..."}
+```
+
+## Server events
+
+JSON envelope:
+
+```json
+{
+  "id": "uuid",
+  "type": "ORDER_ASSIGNED",
+  "company_id": "uuid",
+  "channel": "dispatcher:uuid",
+  "payload": { "order_id": "...", "order_number": "ORD-000001", "status": "ASSIGNED" },
+  "severity": "info",
+  "created_at": "2026-08-09T12:00:00+00:00"
+}
+```
+
+Event types include workflow transitions, execution events (VIN, photos, damage, CMR/documents), `TIMELINE_ENTRY`, `NOTIFICATION_CREATED`, and presence updates.
+
+Batched delivery:
+
+```json
+{"type":"BATCH","events":[...]}
+```
+
+## Channels
+
+| Channel | Audience |
+|---------|----------|
+| `company:{company_id}` | All company users |
+| `dispatcher:{company_id}` | Admin + dispatcher |
+| `driver:{user_id}` | Assigned driver user |
+| `order:{order_id}` | Order subscribers |
+| `notifications:{user_id}` | Notification recipient |
+
+## Presence REST
+
+```
+GET /api/v1/realtime/presence
+```
+
+Returns online users for the authenticated company (role, status, last seen, active order).
+
+## Infrastructure
+
+Events are published by domain services through `app.realtime.publisher` and distributed via Redis pub/sub (`prodrive:events:{company_id}`).
+
+---
+
 # 30. Versioning Rules
 
 Breaking changes require:

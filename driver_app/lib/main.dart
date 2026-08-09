@@ -6,6 +6,7 @@ import 'core/connectivity/connectivity_service.dart';
 import 'core/storage/hive_boxes.dart';
 import 'features/auth/providers/auth_controller.dart';
 import 'features/sync/providers/sync_providers.dart';
+import 'core/realtime/realtime_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,13 @@ class _BootstrapAppState extends ConsumerState<BootstrapApp> {
     ref.listen<bool>(isOnlineProvider, (previous, next) {
       if (next && previous == false) {
         ref.read(syncControllerProvider).syncIfOnline();
+      }
+    });
+    ref.listen<AuthController>(authControllerProvider, (previous, next) {
+      if (next.authenticated) {
+        ref.read(realtimeControllerProvider).connect();
+      } else {
+        ref.read(realtimeControllerProvider).disconnect();
       }
     });
 

@@ -9,6 +9,7 @@ from app.common.exceptions import NotFoundError
 from app.notifications.device_token_repository import DeviceTokenRepository
 from app.notifications.models import DeviceToken, Notification
 from app.notifications.repository import NotificationRepository
+from app.realtime.publisher import publish_notification_created
 from app.users.models import User
 from app.users.repository import UserRepository
 
@@ -66,15 +67,26 @@ class NotificationService:
         title: str,
         message: str,
         notification_type: str,
+        order_id: uuid.UUID | None = None,
     ) -> Notification:
         """Create a notification for a user."""
-        return self._repository.create(
+        notification = self._repository.create(
             company_id=company_id,
             user_id=user_id,
             title=title,
             message=message,
             notification_type=notification_type,
         )
+        publish_notification_created(
+            company_id=company_id,
+            user_id=user_id,
+            notification_id=notification.id,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+            order_id=order_id,
+        )
+        return notification
 
     def notify_staff(
         self,

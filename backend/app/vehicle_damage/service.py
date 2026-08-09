@@ -18,6 +18,8 @@ from app.order_timeline.service import OrderTimelineService
 from app.order_vehicles.repository import OrderVehicleRepository
 from app.orders.repository import OrderRepository
 from app.users.models import User
+from app.realtime.publisher import publish_vehicle_execution_event
+from app.realtime.schemas import RealtimeEventType
 from app.vehicle_damage.models import VehicleDamage
 from app.vehicle_damage.repository import VehicleDamageRepository
 from app.vehicle_damage.schemas import (
@@ -105,6 +107,15 @@ class VehicleDamageService:
             title="Damage reported",
             message=f"Damage reported on order {order.order_number}.",
             notification_type="DAMAGE_REPORTED",
+        )
+        publish_vehicle_execution_event(
+            company_id=current_user.company_id,
+            order_id=order_id,
+            vehicle_id=vehicle_id,
+            event_type=RealtimeEventType.DAMAGE_REPORTED,
+            order_number=order.order_number,
+            extra={"damage_id": str(damage.id), "severity": payload.severity.value},
+            driver_user_id=current_user.id,
         )
         return self._to_response(damage)
 

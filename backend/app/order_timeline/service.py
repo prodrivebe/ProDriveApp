@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.orders.models import OrderTimelineEntry
 from app.order_timeline.repository import OrderTimelineRepository
+from app.realtime.publisher import publish_timeline_entry
 from app.users.models import User
 
 
@@ -31,10 +32,19 @@ class OrderTimelineService:
         description: str,
     ) -> OrderTimelineEntry:
         """Record a timeline event."""
-        return self._repository.create(
+        entry = self._repository.create(
             company_id=current_user.company_id,
             order_id=order_id,
             event_type=event_type,
             description=description,
             created_by=current_user.id,
         )
+        publish_timeline_entry(
+            company_id=current_user.company_id,
+            order_id=order_id,
+            entry_id=entry.id,
+            event_type=event_type,
+            description=description,
+            created_at=entry.created_at.isoformat(),
+        )
+        return entry

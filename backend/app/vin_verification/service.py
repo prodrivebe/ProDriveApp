@@ -19,6 +19,8 @@ from app.order_vehicles.repository import OrderVehicleRepository
 from app.orders.repository import OrderRepository
 from app.orders.validators import normalize_vin
 from app.users.models import User
+from app.realtime.publisher import publish_vehicle_execution_event
+from app.realtime.schemas import RealtimeEventType
 from app.vin_verification.repository import VinVerificationRepository
 from app.vin_verification.schemas import VinVerificationResponse
 
@@ -92,6 +94,15 @@ class VinVerificationService:
             new_value=normalized_vin,
             ip_address=ip_address,
         )
+        publish_vehicle_execution_event(
+            company_id=current_user.company_id,
+            order_id=order_id,
+            vehicle_id=vehicle_id,
+            event_type=RealtimeEventType.VIN_VERIFIED,
+            order_number=order.order_number,
+            extra={"vin": normalized_vin},
+            driver_user_id=current_user.id if current_user.role == UserRole.DRIVER else None,
+        )
         return self._build_response(vehicle)
 
     def update_vin(
@@ -157,6 +168,15 @@ class VinVerificationService:
             title="VIN changed",
             message=f"VIN changed on order {order.order_number}.",
             notification_type="VIN_CHANGED",
+        )
+        publish_vehicle_execution_event(
+            company_id=current_user.company_id,
+            order_id=order_id,
+            vehicle_id=vehicle_id,
+            event_type=RealtimeEventType.VIN_CHANGED,
+            order_number=order.order_number,
+            extra={"vin": normalized_vin},
+            driver_user_id=current_user.id if current_user.role == UserRole.DRIVER else None,
         )
         return self._build_response(vehicle)
 

@@ -160,6 +160,24 @@ Responsible for:
 * Redis
 * External APIs
 * Truck Navigation
+* Real-time WebSocket + Redis pub/sub (`app/realtime/`)
+
+---
+
+# 3a. Real-Time Layer (Sprint 9)
+
+Live operational updates use a dedicated realtime module isolated from business services.
+
+```text
+Domain Service → publisher.py → EventService → Redis → WebSocket clients
+```
+
+Business services must not manage websocket connections directly. They publish domain events after successful commits.
+
+Connected clients:
+
+* Dispatcher dashboard (`frontend/`) — Operations Board, notifications, order detail
+* Driver app (`driver_app/`) — current order, workflow, timeline refresh
 
 ---
 

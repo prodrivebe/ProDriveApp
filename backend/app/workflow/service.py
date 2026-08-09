@@ -20,6 +20,9 @@ from app.order_stops.schemas import OrderStopResponse
 from app.order_vehicles.schemas import OrderVehicleResponse
 from app.orders.schemas import OrderResponse
 from app.users.models import User
+from app.realtime.publisher import publish_order_event
+from app.realtime.schemas import RealtimeEventType
+from app.realtime.workflow_events import WORKFLOW_REALTIME_EVENTS
 from app.workflow.schemas import DriverCurrentOrderResponse
 from app.workflow.validators import (
     ACTIVE_WORKFLOW_STATUSES,
@@ -163,7 +166,17 @@ class OrderWorkflowService:
             message=f"Order {order.order_number} was rejected by the driver.",
             notification_type="ORDER_REJECTED",
         )
-        return self._reload_order(current_user, updated_order.id)
+        reloaded = self._reload_order(current_user, updated_order.id)
+        driver = self._get_assigned_driver(order)
+        publish_order_event(
+            company_id=current_user.company_id,
+            order_id=order.id,
+            event_type=RealtimeEventType.ORDER_REJECTED,
+            order_number=order.order_number,
+            status=OrderStatus.READY.value,
+            driver_user_id=driver.user_id if driver is not None else None,
+        )
+        return reloaded
 
     def arrive_pickup(
         self,
@@ -459,7 +472,20 @@ class OrderWorkflowService:
                 message=notify_staff_message,
                 notification_type=notify_staff_type,
             )
-        return self._reload_order(current_user, updated_order.id)
+        reloaded = self._reload_order(current_user, updated_order.id)
+        driver = self._get_assigned_driver(reloaded)
+        mapped = WORKFLOW_REALTIME_EVENTS.get(event_type, RealtimeEventType.ORDER_UPDATED)
+        if event_type == "DELIVERY_COMPLETE" and OrderStatus(reloaded.status) != OrderStatus.COMPLETED:
+            mapped = RealtimeEventType.ORDER_UPDATED
+        publish_order_event(
+            company_id=current_user.company_id,
+            order_id=reloaded.id,
+            event_type=mapped,
+            order_number=reloaded.order_number,
+            status=OrderStatus(reloaded.status).value,
+            driver_user_id=driver.user_id if driver is not None else None,
+        )
+        return reloaded
 
     def _record_workflow_event(
         self,

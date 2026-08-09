@@ -22,6 +22,8 @@ from app.order_timeline.service import OrderTimelineService
 from app.order_vehicles.repository import OrderVehicleRepository
 from app.orders.repository import OrderRepository
 from app.users.models import User
+from app.realtime.publisher import publish_vehicle_execution_event
+from app.realtime.schemas import RealtimeEventType
 from app.vehicle_photos.models import VehiclePhoto
 from app.vehicle_photos.repository import VehiclePhotoRepository
 
@@ -107,6 +109,15 @@ class VehiclePhotoService:
             user_id=current_user.id,
             entity_id=str(photo.id),
             ip_address=ip_address,
+        )
+        publish_vehicle_execution_event(
+            company_id=current_user.company_id,
+            order_id=order_id,
+            vehicle_id=vehicle_id,
+            event_type=RealtimeEventType.PHOTO_UPLOADED,
+            order_number=order.order_number,
+            extra={"photo_id": str(photo.id), "photo_type": photo_type.value},
+            driver_user_id=current_user.id,
         )
         return photo
 

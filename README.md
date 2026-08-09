@@ -69,11 +69,11 @@ Infrastructure
 
 ## Current Status
 
-Version: 0.2 Alpha
+Version: 0.3 Alpha
 
-Sprints 1–7 complete (backend + dispatcher web app). **Sprint 8** delivers the Flutter driver app in `driver_app/` with offline-first workflow execution, VIN/photo/damage/CMR integration, and JWT auth against the operational API.
+Sprints 1–8 complete (backend, dispatcher web app, driver app). **Sprint 9** adds WebSocket + Redis real-time operations, live Operations Board, presence tracking, and live notification/timeline updates.
 
-Backend: execution workflow, orders, fleet, customers, documents, notifications.
+Backend: execution workflow, orders, fleet, customers, documents, notifications, realtime events.
 
 ---
 
@@ -86,6 +86,10 @@ flutter run
 ```
 
 Default API URL targets the Android emulator host (`10.0.2.2:8000`). See `driver_app/README.md` and `docs/SPRINT_008_REPORT.md`.
+
+## Real-time operations (Sprint 9)
+
+Dispatcher dashboard and driver app subscribe to `WS /api/v1/ws?token=...` for live order, notification, and timeline updates. See `docs/SPRINT_009_REPORT.md`.
 
 ---
 

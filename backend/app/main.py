@@ -1,5 +1,6 @@
 """FastAPI application factory."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -41,11 +42,25 @@ from app.vehicle_photos.routes import router as execution_vehicle_photos_router
 from app.vin_verification.routes import router as vin_verification_router
 from app.reports.routes import router as reports_router
 from app.search.routes import router as search_router
+from app.realtime.event_service import init_event_service
+from app.realtime.routes import router as realtime_router
+from app.realtime.websocket_routes import router as realtime_ws_router
 from app.trailers.routes import router as trailers_router
 from app.trucks.routes import router as trucks_router
 from app.users.routes import router as users_router
 
 logger = logging.getLogger(__name__)
+
+
+async def _realtime_maintenance_loop(interval_seconds: int = 60) -> None:
+    """Periodic stale connection cleanup."""
+    from app.realtime.event_service import get_event_service
+
+    while True:
+        await asyncio.sleep(interval_seconds)
+        service = get_event_service()
+        if service is not None:
+            await service.maintenance()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -63,7 +78,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             engine_initialized_in_lifespan = True
         redis_client = RedisClient(app_settings)
         app.state.redis_client = redis_client
+        use_memory_bridge = app_settings.environment == "test"
+        event_service = init_event_service(
+            redis_client=None if use_memory_bridge else redis_client.client,
+            use_memory_bridge=use_memory_bridge,
+        )
+        event_service.bind_loop(asyncio.get_running_loop())
+        event_service.start()
+        app.state.event_service = event_service
+        maintenance_task = asyncio.create_task(_realtime_maintenance_loop())
         yield
+        maintenance_task.cancel()
+        event_service.stop()
         redis_client.close()
         if engine_initialized_in_lifespan:
             dispose_engine()
@@ -199,6 +225,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(
         search_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        realtime_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        realtime_ws_router,
         prefix=app_settings.api_v1_prefix,
     )
 

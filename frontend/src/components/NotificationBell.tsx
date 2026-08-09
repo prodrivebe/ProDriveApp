@@ -13,7 +13,6 @@ export function NotificationBell() {
   const notificationsQuery = useQuery({
     queryKey: ["notifications", "unread"],
     queryFn: () => notificationsService.list(true),
-    refetchInterval: 60_000,
   });
 
   const markReadMutation = useMutation({
@@ -41,6 +40,10 @@ export function NotificationBell() {
               onClick={() => {
                 markReadMutation.mutate(item.id);
                 setAnchor(null);
+                const orderId = (item as { order_id?: string | null }).order_id;
+                if (orderId) {
+                  navigate(`/orders/${orderId}`);
+                }
               }}
             >
               <Typography variant="body2" fontWeight={600}>

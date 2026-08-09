@@ -43,6 +43,8 @@ from app.workflow.service import OrderWorkflowService
 from app.trailers.repository import TrailerRepository
 from app.trucks.repository import TruckRepository
 from app.users.models import User
+from app.realtime.publisher import publish_order_event
+from app.realtime.schemas import RealtimeEventType
 
 MAX_PAGE_SIZE = 100
 
@@ -463,8 +465,18 @@ class OrderService:
                 title="New order assignment",
                 message=f"Order {order.order_number} has been assigned to you.",
                 notification_type="ORDER_ASSIGNED",
+                order_id=order.id,
             )
-        return self.get_order(current_user, updated_order.id)
+        reloaded = self.get_order(current_user, updated_order.id)
+        publish_order_event(
+            company_id=current_user.company_id,
+            order_id=reloaded.id,
+            event_type=RealtimeEventType.ORDER_ASSIGNED,
+            order_number=reloaded.order_number,
+            status=OrderStatus.ASSIGNED.value,
+            driver_user_id=driver.user_id,
+        )
+        return reloaded
 
     def accept_order(
         self,
