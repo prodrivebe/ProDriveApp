@@ -13,13 +13,14 @@ from app.customers.repository import CustomerRepository
 from app.drivers.models import Driver
 from app.drivers.repository import DriverRepository
 from app.notifications.service import NotificationService
+from app.order_stops.repository import OrderStopRepository
+from app.order_stops.service import OrderStopService
+from app.order_stops.validators import validate_stop_sequences
+from app.order_timeline.service import OrderTimelineService
+from app.order_vehicles.repository import OrderVehicleRepository
+from app.order_vehicles.service import OrderVehicleService
 from app.orders.models import Order, OrderStop, OrderTimelineEntry, OrderVehicle
-from app.orders.repository import (
-    OrderRepository,
-    OrderStopRepository,
-    OrderTimelineRepository,
-    OrderVehicleRepository,
-)
+from app.orders.repository import OrderRepository
 from app.orders.schemas import (
     AssignDriverRequest,
     OrderCreateRequest,
@@ -37,7 +38,6 @@ from app.orders.validators import (
     normalize_vin,
     validate_order_editable,
     validate_status_transition,
-    validate_stop_sequences,
     validate_vehicle_stop_links,
 )
 from app.trailers.repository import TrailerRepository
@@ -55,7 +55,9 @@ class OrderService:
         self._orders = OrderRepository(db)
         self._stops = OrderStopRepository(db)
         self._vehicles = OrderVehicleRepository(db)
-        self._timeline = OrderTimelineRepository(db)
+        self._stop_service = OrderStopService(db)
+        self._vehicle_service = OrderVehicleService(db)
+        self._timeline_service = OrderTimelineService(db)
         self._customers = CustomerRepository(db)
         self._drivers = DriverRepository(db)
         self._trucks = TruckRepository(db)
@@ -148,13 +150,24 @@ class OrderService:
         )
         created_stops: list[OrderStop] = []
         for stop_payload in payload.stops:
-            created_stops.append(
-                self._stops.create(
-                    company_id=current_user.company_id,
-                    order_id=order.id,
-                    payload=stop_payload,
-                    created_by=current_user.id,
-                )
+            stop = self._stops.create(
+                company_id=current_user.company_id,
+                order_id=order.id,
+                payload=stop_payload,
+                created_by=current_user.id,
+            )
+            created_stops.append(stop)
+            self._record_timeline(
+                current_user,
+                order.id,
+                "STOP_ADDED",
+                f"{stop_payload.stop_type.value} stop added at sequence {stop_payload.sequence}.",
+            )
+            self._audit.record_order_stop_added(
+                company_id=current_user.company_id,
+                user_id=current_user.id,
+                entity_id=str(stop.id),
+                ip_address=ip_address,
             )
 
         for vehicle_payload in payload.vehicles:
@@ -163,12 +176,24 @@ class OrderService:
             )
             if created_stops:
                 validate_vehicle_stop_links(created_stops, vehicle_payload)
-            self._vehicles.create(
+            vehicle = self._vehicles.create(
                 company_id=current_user.company_id,
                 order_id=order.id,
                 payload=vehicle_payload,
                 created_by=current_user.id,
                 vin=vin,
+            )
+            self._record_timeline(
+                current_user,
+                order.id,
+                "VEHICLE_ADDED",
+                "Vehicle added to order.",
+            )
+            self._audit.record_order_vehicle_added(
+                company_id=current_user.company_id,
+                user_id=current_user.id,
+                entity_id=str(vehicle.id),
+                ip_address=ip_address,
             )
 
         self._record_timeline(
@@ -196,7 +221,10 @@ class OrderService:
         order = self.get_order(current_user, order_id)
         validate_order_editable(order)
         self._validate_customer(current_user, payload.customer_id)
-        if payload.status is not None and payload.status != OrderStatus(order.status):
+        status_changed = (
+            payload.status is not None and payload.status != OrderStatus(order.status)
+        )
+        if status_changed:
             validate_status_transition(order, payload.status)
         updated_order = self._orders.update(order, payload, current_user.id)
         self._record_timeline(
@@ -205,6 +233,13 @@ class OrderService:
             "ORDER_UPDATED",
             f"Order {order.order_number} updated.",
         )
+        if status_changed and payload.status is not None:
+            self._record_status_change(
+                current_user,
+                order.id,
+                payload.status,
+                ip_address,
+            )
         self._audit.record_order_updated(
             company_id=current_user.company_id,
             user_id=current_user.id,
@@ -239,142 +274,90 @@ class OrderService:
     def list_stops(self, current_user: User, order_id: uuid.UUID) -> list[OrderStop]:
         """List stops for an order."""
         self.get_order(current_user, order_id)
-        return self._stops.list_for_order(order_id, current_user.company_id)
+        return self._stop_service.list_stops(current_user, order_id)
 
     def create_stop(
         self,
         current_user: User,
         order_id: uuid.UUID,
         payload: OrderStopCreateRequest,
+        ip_address: str | None = None,
     ) -> OrderStop:
         """Create a stop on an order."""
-        order = self.get_order(current_user, order_id)
-        validate_order_editable(order)
-        stop = self._stops.create(
-            company_id=current_user.company_id,
-            order_id=order_id,
-            payload=payload,
-            created_by=current_user.id,
-        )
-        self._record_timeline(
+        return self._stop_service.create_stop(
             current_user,
             order_id,
-            "STOP_ADDED",
-            f"{payload.stop_type.value} stop added at sequence {payload.sequence}.",
+            payload,
+            ip_address,
         )
-        return stop
 
     def update_stop(
         self,
         current_user: User,
         stop_id: uuid.UUID,
         payload: OrderStopUpdateRequest,
+        ip_address: str | None = None,
     ) -> OrderStop:
         """Update a stop."""
-        stop = self._stops.get_by_id_for_company(stop_id, current_user.company_id)
-        if stop is None:
-            raise NotFoundError(code="STOP_NOT_FOUND", message="Stop not found.")
-        order = self.get_order(current_user, stop.order_id)
-        validate_order_editable(order)
-        updated_stop = self._stops.update(stop, payload, current_user.id)
-        self._record_timeline(
+        return self._stop_service.update_stop(
             current_user,
-            stop.order_id,
-            "STOP_UPDATED",
-            f"Stop sequence {payload.sequence} updated.",
+            stop_id,
+            payload,
+            ip_address,
         )
-        return updated_stop
 
-    def delete_stop(self, current_user: User, stop_id: uuid.UUID) -> None:
+    def delete_stop(
+        self,
+        current_user: User,
+        stop_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> None:
         """Soft delete a stop."""
-        stop = self._stops.get_by_id_for_company(stop_id, current_user.company_id)
-        if stop is None:
-            raise NotFoundError(code="STOP_NOT_FOUND", message="Stop not found.")
-        order = self.get_order(current_user, stop.order_id)
-        validate_order_editable(order)
-        self._stops.soft_delete(stop, current_user.id)
-        self._record_timeline(
-            current_user,
-            stop.order_id,
-            "STOP_DELETED",
-            f"Stop sequence {stop.sequence} deleted.",
-        )
+        self._stop_service.delete_stop(current_user, stop_id, ip_address)
 
     def list_vehicles(self, current_user: User, order_id: uuid.UUID) -> list[OrderVehicle]:
         """List vehicles for an order."""
         self.get_order(current_user, order_id)
-        return self._vehicles.list_for_order(order_id, current_user.company_id)
+        return self._vehicle_service.list_vehicles(current_user, order_id)
 
     def create_vehicle(
         self,
         current_user: User,
         order_id: uuid.UUID,
         payload: OrderVehicleCreateRequest,
+        ip_address: str | None = None,
     ) -> OrderVehicle:
         """Create a vehicle on an order."""
-        order = self.get_order(current_user, order_id)
-        validate_order_editable(order)
-        stops = self._stops.list_for_order(order_id, current_user.company_id)
-        validate_vehicle_stop_links(stops, payload)
-        vin = normalize_vin(payload.vin) if payload.vin else None
-        vehicle = self._vehicles.create(
-            company_id=current_user.company_id,
-            order_id=order_id,
-            payload=payload,
-            created_by=current_user.id,
-            vin=vin,
-        )
-        self._record_timeline(
+        return self._vehicle_service.create_vehicle(
             current_user,
             order_id,
-            "VEHICLE_ADDED",
-            "Vehicle added to order.",
+            payload,
+            ip_address,
         )
-        return vehicle
 
     def update_vehicle(
         self,
         current_user: User,
         vehicle_id: uuid.UUID,
         payload: OrderVehicleUpdateRequest,
+        ip_address: str | None = None,
     ) -> OrderVehicle:
         """Update a vehicle."""
-        vehicle = self._vehicles.get_by_id_for_company(vehicle_id, current_user.company_id)
-        if vehicle is None:
-            raise NotFoundError(code="VEHICLE_NOT_FOUND", message="Vehicle not found.")
-        order = self.get_order(current_user, vehicle.order_id)
-        validate_order_editable(order)
-        stops = self._stops.list_for_order(vehicle.order_id, current_user.company_id)
-        validate_vehicle_stop_links(stops, payload)
-        vin = normalize_vin(payload.vin) if payload.vin else vehicle.vin
-        updated_vehicle = self._vehicles.update(
-            vehicle,
+        return self._vehicle_service.update_vehicle(
+            current_user,
+            vehicle_id,
             payload,
-            current_user.id,
-            vin=vin,
+            ip_address,
         )
-        self._record_timeline(
-            current_user,
-            vehicle.order_id,
-            "VEHICLE_UPDATED",
-            "Vehicle details updated.",
-        )
-        return updated_vehicle
 
-    def delete_vehicle(self, current_user: User, vehicle_id: uuid.UUID) -> None:
+    def delete_vehicle(
+        self,
+        current_user: User,
+        vehicle_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> None:
         """Soft delete a vehicle."""
-        vehicle = self._vehicles.get_by_id_for_company(vehicle_id, current_user.company_id)
-        if vehicle is None:
-            raise NotFoundError(code="VEHICLE_NOT_FOUND", message="Vehicle not found.")
-        order = self.get_order(current_user, vehicle.order_id)
-        validate_order_editable(order)
-        self._vehicles.soft_delete(vehicle, current_user.id)
-        self._record_timeline(
-            current_user,
-            vehicle.order_id,
-            "VEHICLE_DELETED",
-            "Vehicle removed from order.",
-        )
+        self._vehicle_service.delete_vehicle(current_user, vehicle_id, ip_address)
 
     def scan_vin(
         self,
@@ -456,6 +439,12 @@ class OrderService:
             "DRIVER_ASSIGNED",
             "Driver assigned to order.",
         )
+        self._record_status_change(
+            current_user,
+            order_id,
+            OrderStatus.ASSIGNED,
+            ip_address,
+        )
         self._audit.record_order_driver_assigned(
             company_id=current_user.company_id,
             user_id=current_user.id,
@@ -493,6 +482,12 @@ class OrderService:
             order_id,
             "DRIVER_REJECTED",
             "Driver rejected the assignment.",
+        )
+        self._record_status_change(
+            current_user,
+            order_id,
+            OrderStatus.READY,
+            ip_address=None,
         )
         return self.get_order(current_user, updated_order.id)
 
@@ -547,6 +542,12 @@ class OrderService:
             "ORDER_CANCELLED",
             f"Order {order.order_number} cancelled.",
         )
+        self._record_status_change(
+            current_user,
+            order_id,
+            OrderStatus.CANCELLED,
+            ip_address,
+        )
         self._audit.record_order_cancelled(
             company_id=current_user.company_id,
             user_id=current_user.id,
@@ -562,7 +563,7 @@ class OrderService:
     ) -> list[OrderTimelineEntry]:
         """Return timeline entries for an order."""
         self.get_order(current_user, order_id)
-        return self._timeline.list_for_order(order_id, current_user.company_id)
+        return self._timeline_service.list_for_order(current_user, order_id)
 
     def list_orders_for_customer(
         self,
@@ -632,6 +633,7 @@ class OrderService:
             event_type,
             f"Order status changed to {target_status.value}.",
         )
+        self._record_status_change(current_user, order_id, target_status, ip_address=None)
         if target_status == OrderStatus.COMPLETED:
             self._notify_order_completed(order)
         return self.get_order(current_user, updated_order.id)
@@ -664,14 +666,21 @@ class OrderService:
         action: str,
         audit_method: str,
     ) -> OrderVehicle:
-        vehicle = self._vehicles.get_by_id_for_company(vehicle_id, current_user.company_id)
+        vehicle = self._vehicle_service.get_vehicle_for_company(
+            vehicle_id,
+            current_user.company_id,
+        )
         if vehicle is None:
             raise NotFoundError(code="VEHICLE_NOT_FOUND", message="Vehicle not found.")
         order = self.get_order(current_user, vehicle.order_id)
         validate_order_editable(order)
         normalized_vin = normalize_vin(payload.vin)
         old_vin = vehicle.vin
-        updated_vehicle = self._vehicles.update_vin(vehicle, normalized_vin, current_user.id)
+        updated_vehicle = self._vehicle_service.update_vin(
+            vehicle,
+            normalized_vin,
+            current_user.id,
+        )
         self._record_timeline(
             current_user,
             vehicle.order_id,
@@ -688,6 +697,26 @@ class OrderService:
             ip_address=ip_address,
         )
         return updated_vehicle
+
+    def _record_status_change(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        target_status: OrderStatus,
+        ip_address: str | None,
+    ) -> None:
+        self._record_timeline(
+            current_user,
+            order_id,
+            "STATUS_CHANGED",
+            f"Order status changed to {target_status.value}.",
+        )
+        self._audit.record_order_status_changed(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(order_id),
+            ip_address=ip_address,
+        )
 
     def _record_timeline(
         self,
@@ -706,11 +735,10 @@ class OrderService:
         description: str,
     ) -> None:
         """Record an order timeline event."""
-        self._timeline.create(
-            company_id=current_user.company_id,
-            order_id=order_id,
-            event_type=event_type,
-            description=description,
-            created_by=current_user.id,
+        self._timeline_service.record(
+            current_user,
+            order_id,
+            event_type,
+            description,
         )
 

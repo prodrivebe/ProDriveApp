@@ -520,23 +520,18 @@ Every important order event.
 
 Examples
 
-Order Created
+* Order Created (`ORDER_CREATED`)
+* Order Updated (`ORDER_UPDATED`)
+* Status Changed (`STATUS_CHANGED`)
+* Driver Assigned (`DRIVER_ASSIGNED`)
+* Stop Added (`STOP_ADDED`)
+* Stop Removed (`STOP_REMOVED`)
+* Vehicle Added (`VEHICLE_ADDED`)
+* Vehicle Removed (`VEHICLE_REMOVED`)
 
-Driver Assigned
+Additional workflow events (driver accept, pickup, delivery, VIN, photos, CMR) are recorded by their respective modules.
 
-Driver Accepted
-
-Arrived Pickup
-
-VIN Changed
-
-Photos Uploaded
-
-Loading Complete
-
-Delivery Complete
-
-CMR Uploaded
+Timeline logic lives in `app/order_timeline/`. Stop and vehicle mutations are handled in `app/order_stops/` and `app/order_vehicles/`.
 
 This timeline powers the dispatcher view.
 

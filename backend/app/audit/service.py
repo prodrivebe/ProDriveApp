@@ -426,6 +426,132 @@ class AuditService:
             ip_address=ip_address,
         )
 
+    def record_order_status_changed(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order status change."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order",
+            entity_id=entity_id,
+            action="ORDER_STATUS_CHANGED",
+            ip_address=ip_address,
+        )
+
+    def record_order_stop_added(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order stop creation."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_stop",
+            entity_id=entity_id,
+            action="ORDER_STOP_ADDED",
+            ip_address=ip_address,
+        )
+
+    def record_order_stop_updated(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order stop update."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_stop",
+            entity_id=entity_id,
+            action="ORDER_STOP_UPDATED",
+            ip_address=ip_address,
+        )
+
+    def record_order_stop_removed(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order stop removal."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_stop",
+            entity_id=entity_id,
+            action="ORDER_STOP_REMOVED",
+            ip_address=ip_address,
+        )
+
+    def record_order_vehicle_added(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order vehicle creation."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_vehicle",
+            entity_id=entity_id,
+            action="ORDER_VEHICLE_ADDED",
+            ip_address=ip_address,
+        )
+
+    def record_order_vehicle_updated(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order vehicle update."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_vehicle",
+            entity_id=entity_id,
+            action="ORDER_VEHICLE_UPDATED",
+            ip_address=ip_address,
+        )
+
+    def record_order_vehicle_removed(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order vehicle removal."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_vehicle",
+            entity_id=entity_id,
+            action="ORDER_VEHICLE_REMOVED",
+            ip_address=ip_address,
+        )
+
     def record_vehicle_vin_scanned(
         self,
         *,

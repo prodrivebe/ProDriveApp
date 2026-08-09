@@ -92,6 +92,23 @@
 
 ---
 
+## Sprint 4 — Order Management
+
+* [x] Extract `order_stops`, `order_vehicles`, `order_timeline` modules
+* [x] Order CRUD with company-scoped order numbers
+* [x] Multi-stop orders with unique sequence validation
+* [x] Multi-vehicle orders with stop link validation
+* [x] Automatic read-only timeline generation
+* [x] Status transition validation
+* [x] Audit logging for order, stop, and vehicle mutations
+* [x] Cross-company isolation (404)
+* [x] Soft delete for orders, stops, and vehicles
+* [x] Permission checks (manager vs driver)
+* [x] Order domain tests
+* [x] API and database documentation
+
+---
+
 ## Milestone 6 — Customers
 
 * [x] Customer management

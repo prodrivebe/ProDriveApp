@@ -584,6 +584,12 @@ DELETE
 /stops/{id}
 ```
 
+Soft delete only.
+
+Stop sequence values must be unique within an order. Pickup and delivery stop types are validated on vehicle linking.
+
+Implemented in `app/order_stops/`.
+
 ---
 
 # 18. Vehicle Endpoints
@@ -611,6 +617,12 @@ DELETE
 ```
 /vehicles/{id}
 ```
+
+Soft delete only.
+
+Vehicle pickup and delivery stop references must belong to the same order and match stop types.
+
+CRUD implemented in `app/order_vehicles/`. VIN endpoints remain under the same `/vehicles` prefix.
 
 ---
 
@@ -704,7 +716,18 @@ GET
 
 Read-only.
 
-Timeline entries are generated automatically.
+Timeline entries are generated automatically by `app/order_timeline/` when orders, stops, vehicles, assignments, or statuses change.
+
+Core event types:
+
+* `ORDER_CREATED`
+* `ORDER_UPDATED`
+* `STATUS_CHANGED`
+* `DRIVER_ASSIGNED`
+* `STOP_ADDED`
+* `STOP_REMOVED`
+* `VEHICLE_ADDED`
+* `VEHICLE_REMOVED`
 
 ---
 

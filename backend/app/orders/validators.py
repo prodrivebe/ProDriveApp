@@ -5,6 +5,7 @@ import re
 from app.common.enums import OrderStatus, StopType, UserRole
 from app.common.exceptions import AuthorizationError, ValidationError
 from app.drivers.models import Driver
+from app.order_stops.validators import validate_stop_sequences
 from app.orders.models import Order, OrderStop
 from app.orders.schemas import OrderStopCreateRequest, OrderVehicleCreateRequest
 from app.users.models import User
@@ -61,16 +62,6 @@ def validate_status_transition(order: Order, target_status: OrderStatus) -> None
         raise ValidationError(
             code="INVALID_ORDER_STATUS",
             message=f"Cannot transition order from {current_status} to {target_status}.",
-        )
-
-
-def validate_stop_sequences(stops: list[OrderStopCreateRequest]) -> None:
-    """Ensure stop sequences are unique within the payload."""
-    sequences = [stop.sequence for stop in stops]
-    if len(sequences) != len(set(sequences)):
-        raise ValidationError(
-            code="DUPLICATE_STOP_SEQUENCE",
-            message="Stop sequence values must be unique.",
         )
 
 

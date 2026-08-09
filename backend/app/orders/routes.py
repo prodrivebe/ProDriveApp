@@ -140,11 +140,17 @@ def list_stops(
 def create_stop(
     order_id: uuid.UUID,
     payload: OrderStopCreateRequest,
+    request: Request,
     current_user: User = Depends(require_order_manager),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderStopResponse]:
     """Create a stop on an order."""
-    stop = order_service.create_stop(current_user, order_id, payload)
+    stop = order_service.create_stop(
+        current_user,
+        order_id,
+        payload,
+        get_client_ip(request),
+    )
     return success_response(OrderStopResponse.model_validate(stop))
 
 
@@ -169,11 +175,17 @@ def list_vehicles(
 def create_vehicle(
     order_id: uuid.UUID,
     payload: OrderVehicleCreateRequest,
+    request: Request,
     current_user: User = Depends(require_order_manager),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderVehicleResponse]:
     """Create a vehicle on an order."""
-    vehicle = order_service.create_vehicle(current_user, order_id, payload)
+    vehicle = order_service.create_vehicle(
+        current_user,
+        order_id,
+        payload,
+        get_client_ip(request),
+    )
     return success_response(OrderVehicleResponse.model_validate(vehicle))
 
 
