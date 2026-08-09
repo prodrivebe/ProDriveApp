@@ -1146,6 +1146,39 @@ Primary screens:
 
 ---
 
+# 31b. Driver Mobile Application
+
+Sprint 8 Flutter app (`driver_app/`) consumes this API via JWT for **driver role only**.
+
+Base URL in development (Android emulator): `http://10.0.2.2:8000/api/v1`
+
+Override at build time: `--dart-define=API_BASE_URL=https://your-host/api/v1`
+
+Authentication flow:
+
+1. `POST /auth/login`
+2. Store access + refresh tokens in Flutter Secure Storage
+3. Attach `Authorization: Bearer` header (Dio interceptor)
+4. Refresh via `POST /auth/refresh` on 401; clear session if refresh fails
+
+Primary driver endpoints:
+
+* `GET /drivers/me/home` — dashboard payload
+* `GET /drivers/me/current-order` — active execution context
+* `GET /drivers/me/orders` — assigned orders
+* Workflow POST actions under `/orders/{id}/…`
+* Sprint 6 execution: VIN, photos, damage, documents, completion checklist
+
+Offline behavior:
+
+* Hive cache for home, current order, and orders list
+* Hive queue for workflow, uploads, and damage submissions
+* Automatic sync when connectivity returns
+
+Dispatcher/admin accounts should use the web app; the mobile app is workflow-focused for assigned drivers.
+
+---
+
 # 30. Versioning Rules
 
 Breaking changes require:

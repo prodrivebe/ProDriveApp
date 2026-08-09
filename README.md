@@ -69,11 +69,23 @@ Infrastructure
 
 ## Current Status
 
-Version: 0.1 Alpha
+Version: 0.2 Alpha
 
-Sprints 1–6 backend complete. Sprint 7 dispatcher web application (`frontend/`) connects to the operational API.
+Sprints 1–7 complete (backend + dispatcher web app). **Sprint 8** delivers the Flutter driver app in `driver_app/` with offline-first workflow execution, VIN/photo/damage/CMR integration, and JWT auth against the operational API.
 
 Backend: execution workflow, orders, fleet, customers, documents, notifications.
+
+---
+
+## Driver app (Sprint 8)
+
+```bash
+cd driver_app
+flutter pub get
+flutter run
+```
+
+Default API URL targets the Android emulator host (`10.0.2.2:8000`). See `driver_app/README.md` and `docs/SPRINT_008_REPORT.md`.
 
 ---
 

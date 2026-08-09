@@ -177,17 +177,21 @@
 
 ## Milestone 8 — Driver App
 
-* [x] Login
-* [x] Home screen
-* [x] Order details
-* [x] Truck navigation launch
-* [x] Arrival confirmation
-* [ ] VIN scanner (camera OCR — manual entry in v1)
-* [x] Photo capture (API wired; UI stub in Flutter)
-* [x] Loading complete
-* [x] Delivery workflow
-* [x] CMR upload (API wired)
-* [x] Offline synchronization (queue stub)
+* [x] Flutter scaffold with Riverpod, Dio, GoRouter, Hive, secure storage
+* [x] Login, logout, token refresh, session persistence
+* [x] Home screen (current order, next action, truck/trailer, workflow CTA)
+* [x] Orders list, order detail, stops, vehicles, timeline, checklist
+* [x] Full driver workflow actions (accept through complete delivery)
+* [x] Manual VIN verification and history
+* [x] Photo capture (camera/gallery) with offline upload queue
+* [x] Damage reporting
+* [x] CMR document upload
+* [x] Offline cache + synchronization
+* [x] Profile and notifications
+* [x] Driver app tests (unit/widget)
+* [ ] VIN scanner (camera OCR — out of Sprint 8 scope)
+* [ ] GPS tracking (deferred)
+* [ ] Push notifications FCM (deferred to Sprint 9)
 
 ---
 
