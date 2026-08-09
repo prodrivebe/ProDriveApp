@@ -18,3 +18,14 @@ class ReadinessResponse(BaseModel):
     service: str
     version: str
     checks: dict[str, str]
+
+
+class OpsStatusResponse(BaseModel):
+    """Operational status for monitoring and support."""
+
+    status: str = Field(examples=["ok"])
+    service: str
+    version: str
+    maintenance_mode: bool
+    feature_flags: dict[str, bool]
+    environment: str

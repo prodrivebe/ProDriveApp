@@ -1,0 +1,20 @@
+groups:
+  - name: prodrive-pilot
+    rules:
+      - alert: ProDriveApiDown
+        expr: up{job="prodrive-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: ProDrive API is unreachable
+          description: Health probe failed for more than 2 minutes.
+
+      - alert: ProDriveReadinessDegraded
+        expr: vector(1) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Configure readiness alerting via smoke test or log alerts
+          description: Wire scripts/pilot/readiness_check.sh to your alert channel.

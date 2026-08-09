@@ -80,11 +80,35 @@ class Settings(BaseSettings):
         default="http://localhost:5173,http://127.0.0.1:5173",
         alias="CORS_ORIGINS",
     )
+    public_domain: str = Field(default="", alias="PUBLIC_DOMAIN")
+    maintenance_mode: bool = Field(default=False, alias="MAINTENANCE_MODE")
+    maintenance_message: str = Field(
+        default="ProDrive is temporarily unavailable for maintenance.",
+        alias="MAINTENANCE_MESSAGE",
+    )
+    auth_rate_limit_per_minute: int = Field(default=20, alias="AUTH_RATE_LIMIT_PER_MINUTE")
+    feature_ai_enabled: bool = Field(default=True, alias="FEATURE_AI_ENABLED")
+    feature_planning_enabled: bool = Field(default=True, alias="FEATURE_PLANNING_ENABLED")
+    feature_realtime_enabled: bool = Field(default=True, alias="FEATURE_REALTIME_ENABLED")
+    seed_pilot: bool = Field(default=False, alias="SEED_PILOT")
 
     @property
     def cors_origin_list(self) -> list[str]:
         """Return parsed CORS origin URLs."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def feature_flags(self) -> dict[str, bool]:
+        """Return runtime feature flag map."""
+        return {
+            "ai": self.feature_ai_enabled,
+            "planning": self.feature_planning_enabled,
+            "realtime": self.feature_realtime_enabled,
+        }
+
+    def is_feature_enabled(self, feature_name: str) -> bool:
+        """Return whether a named feature flag is enabled."""
+        return self.feature_flags.get(feature_name, True)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -1,0 +1,3 @@
+registration_number,manufacturer,model,trailer_type,maximum_height,maximum_weight,maximum_vehicle_count,active
+PLT-TRAILER-01,Kässbohrer,Maxima,car_carrier,4.0,20000,5,true
+PLT-TRAILER-02,Rolfo,Formula,car_carrier,3.8,12000,3,true

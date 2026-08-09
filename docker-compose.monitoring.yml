@@ -1,0 +1,54 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prodrive-prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    volumes:
+      - ./deployment/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deployment/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - prodrive
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: prodrive-alertmanager
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    volumes:
+      - ./deployment/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    networks:
+      - prodrive
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: prodrive-grafana
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deployment/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - prodrive
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  prodrive:
+    external: true
+    name: prodriveapp_prodrive

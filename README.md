@@ -69,11 +69,11 @@ Infrastructure
 
 ## Current Status
 
-Version: **0.4 Beta Ready**
+Version: **0.5 Pilot Ready**
 
-Sprints 1–11 complete (backend, dispatcher web, driver app, AI-assisted dispatch, planning board). **Sprint 12** adds beta readiness: health probes, production Docker, backup scripts, integration/security tests, and beta documentation.
+Sprints 1–12 complete (backend, dispatcher web, driver app, AI-assisted dispatch, planning board, beta readiness). **Sprint 13** adds production deployment stack, HTTPS/nginx, automated backups, monitoring profile, operational CLI tools, feature flags, maintenance mode, and pilot documentation.
 
-See `docs/BETA_CHECKLIST.md`, `docs/BETA_TEST_PLAN.md`, `docs/BETA_DEPLOYMENT.md`, and `docs/SPRINT_012_REPORT.md`.
+See `docs/PRODUCTION_DEPLOYMENT.md`, `docs/PILOT_ONBOARDING.md`, `docs/PILOT_SUPPORT.md`, `docs/ROLLBACK_PLAN.md`, and `docs/SPRINT_013_REPORT.md`.
 
 ---
 
@@ -102,11 +102,23 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Production/beta:
+Production/beta/pilot:
 
 ```bash
 docker compose -f docker-compose.prod.yml up --build -d
-./scripts/beta/smoke_test.sh
+./scripts/pilot/smoke_test.sh
+```
+
+Optional monitoring:
+
+```bash
+docker compose -f docker-compose.monitoring.yml --profile monitoring up -d
+```
+
+Optional automated backups:
+
+```bash
+docker compose -f docker-compose.prod.yml --profile backup up -d backup
 ```
 
 Services:

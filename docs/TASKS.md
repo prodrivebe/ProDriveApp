@@ -266,6 +266,24 @@
 
 ---
 
+## Sprint 13 — Pilot Deployment
+
+* [x] Full production stack (api + nginx frontend + postgres + redis)
+* [x] HTTPS/reverse proxy configuration and SSL setup script
+* [x] Automated database and uploads backup with retention
+* [x] Optional monitoring profile (Prometheus, Grafana, Alertmanager)
+* [x] Maintenance mode and environment feature flags
+* [x] Auth rate limiting middleware
+* [x] Ops health endpoint (`/health/ops`)
+* [x] Pilot seed script (`SEED_PILOT=true`)
+* [x] CSV import tools (drivers, trucks, trailers, customers)
+* [x] Export tools (orders, audit, documents/photos)
+* [x] Admin support CLI (list users, reset password)
+* [x] Pilot onboarding, support, deployment, rollback documentation
+* [x] Sprint 13 report with deployment checklist and pilot assessment
+
+---
+
 ## Milestone 9 — Documents
 
 * [x] Automatic CMR generation

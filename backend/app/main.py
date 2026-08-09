@@ -16,6 +16,11 @@ from app.auth.routes import router as auth_router
 from app.cmr.routes import router as cmr_router
 from app.common.handlers import register_exception_handlers
 from app.common.middleware import RequestLoggingMiddleware
+from app.common.ops_middleware import (
+    AuthRateLimitMiddleware,
+    FeatureFlagMiddleware,
+    MaintenanceModeMiddleware,
+)
 from app.common.routes import router as common_router
 from app.companies.routes import router as companies_router
 from app.config.logging import configure_logging
@@ -33,6 +38,7 @@ from app.notifications.routes import router as notifications_router
 from app.order_stops.routes import router as stops_router
 from app.order_vehicles.routes import router as order_vehicles_router
 from app.planning.routes import router as planning_router
+from app.orders.routes import router as orders_router
 from app.orders.vehicle_routes import router as vehicle_vin_router
 from app.completion_checklist.routes import router as completion_checklist_router
 from app.order_documents.routes import document_router, router as order_documents_router
@@ -125,6 +131,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_exception_handlers(application)
 
+    application.add_middleware(AuthRateLimitMiddleware, settings=app_settings)
+    application.add_middleware(FeatureFlagMiddleware, settings=app_settings)
+    application.add_middleware(MaintenanceModeMiddleware, settings=app_settings)
     application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(
         CORSMiddleware,
