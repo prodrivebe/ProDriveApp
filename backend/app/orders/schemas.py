@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.common.enums import OrderStatus, StopType
+from app.common.enums import OrderStatus, StopProgressStatus, StopType
 
 
 class OrderStopResponse(BaseModel):
@@ -30,6 +30,7 @@ class OrderStopResponse(BaseModel):
     longitude: Decimal | None
     arrival_time: datetime | None
     departure_time: datetime | None
+    progress_status: StopProgressStatus
     created_at: datetime
     updated_at: datetime
 

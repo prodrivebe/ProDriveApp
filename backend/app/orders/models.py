@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
-from app.common.enums import OrderStatus
+from app.common.enums import OrderStatus, StopProgressStatus
 from app.common.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from app.database.base import Base
 
@@ -120,6 +120,12 @@ class OrderStop(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     departure_time: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+    progress_status: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default=StopProgressStatus.PENDING,
+        index=True,
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

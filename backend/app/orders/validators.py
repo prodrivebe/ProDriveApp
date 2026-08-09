@@ -35,34 +35,11 @@ def validate_order_editable(order: Order) -> None:
         )
 
 
-WORKFLOW_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
-    OrderStatus.READY: {OrderStatus.DRAFT, OrderStatus.ASSIGNED},
-    OrderStatus.ASSIGNED: {OrderStatus.DRAFT, OrderStatus.READY},
-    OrderStatus.ACCEPTED: {OrderStatus.ASSIGNED},
-    OrderStatus.LOADING: {OrderStatus.ACCEPTED},
-    OrderStatus.IN_TRANSIT: {OrderStatus.LOADING},
-    OrderStatus.DELIVERING: {OrderStatus.IN_TRANSIT},
-    OrderStatus.COMPLETED: {OrderStatus.DELIVERING},
-}
-
-
 def validate_status_transition(order: Order, target_status: OrderStatus) -> None:
     """Ensure a workflow transition is allowed."""
-    current_status = OrderStatus(order.status)
-    if target_status == OrderStatus.CANCELLED:
-        if current_status in TERMINAL_STATUSES:
-            raise ValidationError(
-                code="INVALID_ORDER_STATUS",
-                message="This order can no longer be cancelled.",
-            )
-        return
+    from app.workflow.validators import validate_status_transition as validate_workflow_status
 
-    allowed_sources = WORKFLOW_TRANSITIONS.get(target_status, set())
-    if current_status not in allowed_sources:
-        raise ValidationError(
-            code="INVALID_ORDER_STATUS",
-            message=f"Cannot transition order from {current_status} to {target_status}.",
-        )
+    validate_workflow_status(order, target_status)
 
 
 def validate_vehicle_stop_links(

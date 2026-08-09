@@ -143,8 +143,11 @@ def test_driver_workflow_notifies_dispatchers_on_completion(
     for path in (
         "accept",
         "arrive-pickup",
+        "start-loading",
         "complete-loading",
+        "start-transit",
         "arrive-delivery",
+        "start-delivery",
         "complete-delivery",
     ):
         response = client.post(

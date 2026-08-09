@@ -44,8 +44,11 @@ class ReportRepository:
                         [
                             OrderStatus.ASSIGNED,
                             OrderStatus.ACCEPTED,
+                            OrderStatus.ARRIVED_PICKUP,
                             OrderStatus.LOADING,
+                            OrderStatus.LOADED,
                             OrderStatus.IN_TRANSIT,
+                            OrderStatus.ARRIVED_DELIVERY,
                             OrderStatus.DELIVERING,
                         ]
                     ),
@@ -133,8 +136,11 @@ class ReportRepository:
         active_statuses = [
             OrderStatus.ASSIGNED,
             OrderStatus.ACCEPTED,
+            OrderStatus.ARRIVED_PICKUP,
             OrderStatus.LOADING,
+            OrderStatus.LOADED,
             OrderStatus.IN_TRANSIT,
+            OrderStatus.ARRIVED_DELIVERY,
             OrderStatus.DELIVERING,
         ]
         base_filters = [

@@ -415,7 +415,16 @@ def test_completed_order_cannot_be_edited(
     )
 
     driver_headers = _driver_headers(client, "complete.driver@example.com")
-    for path in ("accept", "arrive-pickup", "complete-loading", "arrive-delivery", "complete-delivery"):
+    for path in (
+        "accept",
+        "arrive-pickup",
+        "start-loading",
+        "complete-loading",
+        "start-transit",
+        "arrive-delivery",
+        "start-delivery",
+        "complete-delivery",
+    ):
         step = client.post(
             f"/api/v1/orders/{order['id']}/{path}",
             headers=driver_headers,

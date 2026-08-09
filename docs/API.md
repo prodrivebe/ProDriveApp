@@ -304,6 +304,14 @@ GET
 /drivers/me/home
 ```
 
+GET
+
+```
+/drivers/me/current-order
+```
+
+Returns the active order, current stop, remaining stops, vehicles, next required action, and workflow status for the driver home screen.
+
 ---
 
 # 11. Truck Endpoints
@@ -490,6 +498,8 @@ Soft delete only.
 
 # 16. Order Workflow Endpoints
 
+Implemented in `app/workflow/`. Only the assigned driver may execute workflow actions unless the user is an admin or dispatcher.
+
 Assign Driver
 
 POST
@@ -522,6 +532,14 @@ POST
 /orders/{id}/arrive-pickup
 ```
 
+Start Loading
+
+POST
+
+```
+/orders/{id}/start-loading
+```
+
 Complete Loading
 
 POST
@@ -530,12 +548,28 @@ POST
 /orders/{id}/complete-loading
 ```
 
+Start Transit
+
+POST
+
+```
+/orders/{id}/start-transit
+```
+
 Arrive Delivery
 
 POST
 
 ```
 /orders/{id}/arrive-delivery
+```
+
+Start Delivery
+
+POST
+
+```
+/orders/{id}/start-delivery
 ```
 
 Complete Delivery
@@ -554,7 +588,13 @@ POST
 /orders/{id}/cancel
 ```
 
-Workflow actions are preferred over generic status updates.
+Workflow state machine:
+
+ASSIGNED → ACCEPTED → ARRIVED_PICKUP → LOADING → LOADED → IN_TRANSIT → ARRIVED_DELIVERY → DELIVERING → COMPLETED
+
+Invalid transitions return `422 INVALID_ORDER_STATUS`. Unauthorized drivers receive `403 FORBIDDEN`.
+
+Each action creates timeline entries and audit records with previous and new status values.
 
 ---
 
@@ -728,6 +768,15 @@ Core event types:
 * `STOP_REMOVED`
 * `VEHICLE_ADDED`
 * `VEHICLE_REMOVED`
+* `DRIVER_ACCEPTED`
+* `DRIVER_REJECTED`
+* `ARRIVED_PICKUP`
+* `LOADING_STARTED`
+* `LOADING_COMPLETE`
+* `TRANSIT_STARTED`
+* `ARRIVED_DELIVERY`
+* `DELIVERY_STARTED`
+* `DELIVERY_COMPLETE`
 
 ---
 

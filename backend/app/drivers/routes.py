@@ -19,6 +19,7 @@ from app.drivers.service import DriverService
 from app.fleet.permissions import require_fleet_manager
 from app.orders.schemas import OrderSummaryResponse
 from app.users.models import User
+from app.workflow.schemas import DriverCurrentOrderResponse
 
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
 
@@ -95,6 +96,15 @@ def list_my_orders(
         page_size=page_size,
     )
     return success_response(orders, meta=build_list_meta(page, page_size, total))
+
+
+@router.get("/me/current-order", response_model=SuccessResponse[DriverCurrentOrderResponse])
+def get_current_order(
+    current_user: User = Depends(require_driver),
+    driver_service: DriverService = Depends(get_driver_service),
+) -> SuccessResponse[DriverCurrentOrderResponse]:
+    """Return the driver's active order execution context."""
+    return success_response(driver_service.get_current_order(current_user))
 
 
 @router.get("/me/home", response_model=SuccessResponse[DriverHomeResponse])

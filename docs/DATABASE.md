@@ -283,15 +283,23 @@ ASSIGNED
 
 ACCEPTED
 
+ARRIVED_PICKUP
+
 LOADING
 
+LOADED
+
 IN_TRANSIT
+
+ARRIVED_DELIVERY
 
 DELIVERING
 
 COMPLETED
 
 CANCELLED
+
+Operational workflow is enforced by `app/workflow/`.
 
 ---
 
@@ -320,12 +328,25 @@ Fields
 * longitude
 * arrival_time
 * departure_time
+* progress_status
 
 stop_type
 
 PICKUP
 
 DELIVERY
+
+progress_status
+
+PENDING
+
+ARRIVED
+
+LOADING
+
+COMPLETED
+
+Arrival and departure timestamps are set automatically during the driver workflow.
 
 The sequence field determines route order.
 

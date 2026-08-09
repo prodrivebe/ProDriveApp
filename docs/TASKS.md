@@ -109,6 +109,21 @@
 
 ---
 
+## Sprint 5 — Driver Workflow
+
+* [x] Operational workflow state machine (`app/workflow/`)
+* [x] Workflow endpoints (accept through complete-delivery)
+* [x] Assigned-driver restrictions with dispatcher override
+* [x] Stop progress tracking (`progress_status`, arrival/departure timestamps)
+* [x] `GET /drivers/me/current-order`
+* [x] Timeline integration for all workflow actions
+* [x] In-app notification records for workflow milestones
+* [x] Workflow audit with previous/new status
+* [x] Workflow tests (90%+ service coverage target)
+* [x] API and database documentation
+
+---
+
 ## Milestone 6 — Customers
 
 * [x] Customer management

@@ -210,66 +210,108 @@ def assign_driver(
 @router.post("/{order_id}/accept", response_model=SuccessResponse[OrderResponse])
 def accept_order(
     order_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Accept an assigned order."""
-    order = order_service.accept_order(current_user, order_id)
+    order = order_service.accept_order(current_user, order_id, get_client_ip(request))
     return success_response(OrderResponse.model_validate(order))
 
 
 @router.post("/{order_id}/reject", response_model=SuccessResponse[OrderResponse])
 def reject_order(
     order_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Reject an assigned order."""
-    order = order_service.reject_order(current_user, order_id)
+    order = order_service.reject_order(current_user, order_id, get_client_ip(request))
     return success_response(OrderResponse.model_validate(order))
 
 
 @router.post("/{order_id}/arrive-pickup", response_model=SuccessResponse[OrderResponse])
 def arrive_pickup(
     order_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Mark arrival at pickup."""
-    order = order_service.arrive_pickup(current_user, order_id)
+    order = order_service.arrive_pickup(current_user, order_id, get_client_ip(request))
+    return success_response(OrderResponse.model_validate(order))
+
+
+@router.post("/{order_id}/start-loading", response_model=SuccessResponse[OrderResponse])
+def start_loading(
+    order_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(require_order_actor),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[OrderResponse]:
+    """Start loading at pickup."""
+    order = order_service.start_loading(current_user, order_id, get_client_ip(request))
     return success_response(OrderResponse.model_validate(order))
 
 
 @router.post("/{order_id}/complete-loading", response_model=SuccessResponse[OrderResponse])
 def complete_loading(
     order_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Mark loading complete."""
-    order = order_service.complete_loading(current_user, order_id)
+    order = order_service.complete_loading(current_user, order_id, get_client_ip(request))
+    return success_response(OrderResponse.model_validate(order))
+
+
+@router.post("/{order_id}/start-transit", response_model=SuccessResponse[OrderResponse])
+def start_transit(
+    order_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(require_order_actor),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[OrderResponse]:
+    """Start transit toward delivery."""
+    order = order_service.start_transit(current_user, order_id, get_client_ip(request))
     return success_response(OrderResponse.model_validate(order))
 
 
 @router.post("/{order_id}/arrive-delivery", response_model=SuccessResponse[OrderResponse])
 def arrive_delivery(
     order_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Mark arrival at delivery."""
-    order = order_service.arrive_delivery(current_user, order_id)
+    order = order_service.arrive_delivery(current_user, order_id, get_client_ip(request))
+    return success_response(OrderResponse.model_validate(order))
+
+
+@router.post("/{order_id}/start-delivery", response_model=SuccessResponse[OrderResponse])
+def start_delivery(
+    order_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(require_order_actor),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[OrderResponse]:
+    """Start delivery at the current stop."""
+    order = order_service.start_delivery(current_user, order_id, get_client_ip(request))
     return success_response(OrderResponse.model_validate(order))
 
 
 @router.post("/{order_id}/complete-delivery", response_model=SuccessResponse[OrderResponse])
 def complete_delivery(
     order_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Mark delivery complete."""
-    order = order_service.complete_delivery(current_user, order_id)
+    order = order_service.complete_delivery(current_user, order_id, get_client_ip(request))
     return success_response(OrderResponse.model_validate(order))
 
 

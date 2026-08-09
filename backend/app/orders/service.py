@@ -34,12 +34,12 @@ from app.orders.schemas import (
 )
 from app.orders.validators import (
     ensure_order_view_access,
-    ensure_workflow_actor,
     normalize_vin,
     validate_order_editable,
     validate_status_transition,
     validate_vehicle_stop_links,
 )
+from app.workflow.service import OrderWorkflowService
 from app.trailers.repository import TrailerRepository
 from app.trucks.repository import TruckRepository
 from app.users.models import User
@@ -65,6 +65,7 @@ class OrderService:
         self._companies = CompanyRepository(db)
         self._audit = AuditService(db)
         self._notifications = NotificationService(db)
+        self._workflow = OrderWorkflowService(db)
 
     def list_orders(
         self,
@@ -224,7 +225,8 @@ class OrderService:
         status_changed = (
             payload.status is not None and payload.status != OrderStatus(order.status)
         )
-        if status_changed:
+        previous_status = OrderStatus(order.status)
+        if status_changed and payload.status is not None:
             validate_status_transition(order, payload.status)
         updated_order = self._orders.update(order, payload, current_user.id)
         self._record_timeline(
@@ -237,6 +239,7 @@ class OrderService:
             self._record_status_change(
                 current_user,
                 order.id,
+                previous_status,
                 payload.status,
                 ip_address,
             )
@@ -425,6 +428,7 @@ class OrderService:
                     message="Trailer not found or inactive.",
                 )
 
+        previous_status = OrderStatus(order.status)
         updated_order = self._orders.update_status(
             order,
             OrderStatus.ASSIGNED,
@@ -442,6 +446,7 @@ class OrderService:
         self._record_status_change(
             current_user,
             order_id,
+            previous_status,
             OrderStatus.ASSIGNED,
             ip_address,
         )
@@ -461,66 +466,86 @@ class OrderService:
             )
         return self.get_order(current_user, updated_order.id)
 
-    def accept_order(self, current_user: User, order_id: uuid.UUID) -> Order:
+    def accept_order(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
         """Driver accepts an assigned order."""
-        return self._apply_workflow(current_user, order_id, OrderStatus.ACCEPTED, "DRIVER_ACCEPTED")
+        return self._workflow.accept_order(current_user, order_id, ip_address)
 
-    def reject_order(self, current_user: User, order_id: uuid.UUID) -> Order:
+    def reject_order(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
         """Driver rejects an assigned order."""
-        order = self.get_order(current_user, order_id)
-        driver = self._get_assigned_driver(order)
-        ensure_workflow_actor(current_user, order, driver)
-        validate_status_transition(order, OrderStatus.READY)
-        updated_order = self._orders.update_status(
-            order,
-            OrderStatus.READY,
-            current_user.id,
-            clear_assignment=True,
-        )
-        self._record_timeline(
-            current_user,
-            order_id,
-            "DRIVER_REJECTED",
-            "Driver rejected the assignment.",
-        )
-        self._record_status_change(
-            current_user,
-            order_id,
-            OrderStatus.READY,
-            ip_address=None,
-        )
-        return self.get_order(current_user, updated_order.id)
+        return self._workflow.reject_order(current_user, order_id, ip_address)
 
-    def arrive_pickup(self, current_user: User, order_id: uuid.UUID) -> Order:
+    def arrive_pickup(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
         """Mark arrival at pickup."""
-        return self._apply_workflow(current_user, order_id, OrderStatus.LOADING, "ARRIVED_PICKUP")
+        return self._workflow.arrive_pickup(current_user, order_id, ip_address)
 
-    def complete_loading(self, current_user: User, order_id: uuid.UUID) -> Order:
+    def start_loading(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
+        """Start loading at pickup."""
+        return self._workflow.start_loading(current_user, order_id, ip_address)
+
+    def complete_loading(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
         """Mark loading complete."""
-        return self._apply_workflow(
-            current_user,
-            order_id,
-            OrderStatus.IN_TRANSIT,
-            "LOADING_COMPLETE",
-        )
+        return self._workflow.complete_loading(current_user, order_id, ip_address)
 
-    def arrive_delivery(self, current_user: User, order_id: uuid.UUID) -> Order:
+    def start_transit(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
+        """Start transit toward delivery."""
+        return self._workflow.start_transit(current_user, order_id, ip_address)
+
+    def arrive_delivery(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
         """Mark arrival at delivery."""
-        return self._apply_workflow(
-            current_user,
-            order_id,
-            OrderStatus.DELIVERING,
-            "ARRIVED_DELIVERY",
-        )
+        return self._workflow.arrive_delivery(current_user, order_id, ip_address)
 
-    def complete_delivery(self, current_user: User, order_id: uuid.UUID) -> Order:
+    def start_delivery(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
+        """Start delivery at the current stop."""
+        return self._workflow.start_delivery(current_user, order_id, ip_address)
+
+    def complete_delivery(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
         """Mark delivery complete."""
-        return self._apply_workflow(
-            current_user,
-            order_id,
-            OrderStatus.COMPLETED,
-            "DELIVERY_COMPLETE",
-        )
+        return self._workflow.complete_delivery(current_user, order_id, ip_address)
 
     def cancel_order(
         self,
@@ -531,6 +556,7 @@ class OrderService:
         """Cancel an order."""
         order = self.get_order(current_user, order_id)
         validate_status_transition(order, OrderStatus.CANCELLED)
+        previous_status = OrderStatus(order.status)
         updated_order = self._orders.update_status(
             order,
             OrderStatus.CANCELLED,
@@ -545,6 +571,7 @@ class OrderService:
         self._record_status_change(
             current_user,
             order_id,
+            previous_status,
             OrderStatus.CANCELLED,
             ip_address,
         )
@@ -615,39 +642,6 @@ class OrderService:
             for order in orders
         ]
 
-    def _apply_workflow(
-        self,
-        current_user: User,
-        order_id: uuid.UUID,
-        target_status: OrderStatus,
-        event_type: str,
-    ) -> Order:
-        order = self.get_order(current_user, order_id)
-        driver = self._get_assigned_driver(order)
-        ensure_workflow_actor(current_user, order, driver)
-        validate_status_transition(order, target_status)
-        updated_order = self._orders.update_status(order, target_status, current_user.id)
-        self._record_timeline(
-            current_user,
-            order_id,
-            event_type,
-            f"Order status changed to {target_status.value}.",
-        )
-        self._record_status_change(current_user, order_id, target_status, ip_address=None)
-        if target_status == OrderStatus.COMPLETED:
-            self._notify_order_completed(order)
-        return self.get_order(current_user, updated_order.id)
-
-    def _notify_order_completed(self, order: Order) -> None:
-        """Notify dispatch staff when a driver completes an order."""
-        self._notifications.notify_staff(
-            company_id=order.company_id,
-            roles={UserRole.ADMIN, UserRole.DISPATCHER},
-            title="Order completed",
-            message=f"Order {order.order_number} has been delivered.",
-            notification_type="ORDER_COMPLETED",
-        )
-
     def _get_assigned_driver(self, order: Order) -> Driver | None:
         if order.assigned_driver_id is None:
             return None
@@ -702,6 +696,7 @@ class OrderService:
         self,
         current_user: User,
         order_id: uuid.UUID,
+        previous_status: OrderStatus,
         target_status: OrderStatus,
         ip_address: str | None,
     ) -> None:
@@ -709,12 +704,14 @@ class OrderService:
             current_user,
             order_id,
             "STATUS_CHANGED",
-            f"Order status changed to {target_status.value}.",
+            f"Order status changed from {previous_status.value} to {target_status.value}.",
         )
         self._audit.record_order_status_changed(
             company_id=current_user.company_id,
             user_id=current_user.id,
             entity_id=str(order_id),
+            old_value=previous_status.value,
+            new_value=target_status.value,
             ip_address=ip_address,
         )
 

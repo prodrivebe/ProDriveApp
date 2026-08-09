@@ -33,11 +33,23 @@ class OrderStatus(StrEnum):
     READY = "READY"
     ASSIGNED = "ASSIGNED"
     ACCEPTED = "ACCEPTED"
+    ARRIVED_PICKUP = "ARRIVED_PICKUP"
     LOADING = "LOADING"
+    LOADED = "LOADED"
     IN_TRANSIT = "IN_TRANSIT"
+    ARRIVED_DELIVERY = "ARRIVED_DELIVERY"
     DELIVERING = "DELIVERING"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+
+
+class StopProgressStatus(StrEnum):
+    """Operational progress for an order stop."""
+
+    PENDING = "PENDING"
+    ARRIVED = "ARRIVED"
+    LOADING = "LOADING"
+    COMPLETED = "COMPLETED"
 
 
 class StopType(StrEnum):

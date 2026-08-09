@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.common.enums import StopProgressStatus
 from app.orders.models import OrderStop
 from app.order_stops.schemas import OrderStopCreateRequest, OrderStopUpdateRequest
 
@@ -65,6 +66,7 @@ class OrderStopRepository:
             country=payload.country,
             latitude=payload.latitude,
             longitude=payload.longitude,
+            progress_status=StopProgressStatus.PENDING,
             created_by=created_by,
             updated_by=created_by,
         )
@@ -92,6 +94,25 @@ class OrderStopRepository:
         stop.latitude = payload.latitude
         stop.longitude = payload.longitude
         stop.updated_by = updated_by
+        self._db.add(stop)
+        self._db.commit()
+        self._db.refresh(stop)
+        return stop
+
+    def update_progress(
+        self,
+        stop: OrderStop,
+        progress_status: StopProgressStatus,
+        updated_by: uuid.UUID,
+    ) -> OrderStop:
+        """Update stop progress and arrival/departure timestamps."""
+        now = datetime.now(tz=UTC)
+        stop.progress_status = progress_status
+        stop.updated_by = updated_by
+        if progress_status == StopProgressStatus.ARRIVED and stop.arrival_time is None:
+            stop.arrival_time = now
+        if progress_status == StopProgressStatus.COMPLETED and stop.departure_time is None:
+            stop.departure_time = now
         self._db.add(stop)
         self._db.commit()
         self._db.refresh(stop)

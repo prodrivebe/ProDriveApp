@@ -433,6 +433,8 @@ class AuditService:
         user_id: uuid.UUID,
         entity_id: str,
         ip_address: str | None,
+        old_value: str | None = None,
+        new_value: str | None = None,
     ) -> None:
         """Record order status change."""
         self._repository.create(
@@ -441,6 +443,31 @@ class AuditService:
             entity="order",
             entity_id=entity_id,
             action="ORDER_STATUS_CHANGED",
+            old_value=old_value,
+            new_value=new_value,
+            ip_address=ip_address,
+        )
+
+    def record_order_workflow_transition(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        old_value: str,
+        new_value: str,
+        action: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record a driver workflow transition."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order",
+            entity_id=entity_id,
+            action=action,
+            old_value=old_value,
+            new_value=new_value,
             ip_address=ip_address,
         )
 

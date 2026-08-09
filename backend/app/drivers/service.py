@@ -25,27 +25,11 @@ from app.trucks.repository import TruckRepository
 from app.users.models import User
 from app.users.repository import UserRepository
 
+from app.workflow.schemas import DriverCurrentOrderResponse
+from app.workflow.service import OrderWorkflowService
+from app.workflow.validators import ACTIVE_WORKFLOW_STATUSES, NEXT_REQUIRED_ACTIONS
+
 MAX_PAGE_SIZE = 100
-
-NEXT_ACTIONS: dict[OrderStatus, str] = {
-    OrderStatus.ASSIGNED: "Accept or reject this order",
-    OrderStatus.ACCEPTED: "Navigate to pickup and confirm arrival",
-    OrderStatus.LOADING: "Complete loading",
-    OrderStatus.IN_TRANSIT: "Navigate to delivery",
-    OrderStatus.DELIVERING: "Upload signed CMR and complete delivery",
-    OrderStatus.COMPLETED: "No active tasks",
-    OrderStatus.CANCELLED: "No active tasks",
-    OrderStatus.READY: "Waiting for assignment",
-    OrderStatus.DRAFT: "Waiting for assignment",
-}
-
-ACTIVE_ORDER_STATUSES = {
-    OrderStatus.ASSIGNED,
-    OrderStatus.ACCEPTED,
-    OrderStatus.LOADING,
-    OrderStatus.IN_TRANSIT,
-    OrderStatus.DELIVERING,
-}
 
 
 class DriverService:
@@ -60,6 +44,7 @@ class DriverService:
         self._trailers = TrailerRepository(db)
         self._notifications = NotificationService(db)
         self._audit_service = AuditService(db)
+        self._workflow = OrderWorkflowService(db)
 
     def list_drivers(
         self,
@@ -237,7 +222,7 @@ class DriverService:
         active_orders = [
             order
             for order in orders
-            if OrderStatus(order.status) in ACTIVE_ORDER_STATUSES
+            if OrderStatus(order.status) in ACTIVE_WORKFLOW_STATUSES
         ]
         current_order: OrderSummaryResponse | None = None
         next_action = "No active orders"
@@ -252,7 +237,10 @@ class DriverService:
                 planned_delivery_date=current.planned_delivery_date,
                 created_at=current.created_at,
             )
-            next_action = NEXT_ACTIONS.get(OrderStatus(current.status), "Review order details")
+            next_action = NEXT_REQUIRED_ACTIONS.get(
+                OrderStatus(current.status),
+                "Review order details",
+            )
 
         truck_label: str | None = None
         trailer_label: str | None = None
@@ -281,3 +269,7 @@ class DriverService:
             next_action=next_action,
             unread_notifications=unread,
         )
+
+    def get_current_order(self, current_user: User) -> DriverCurrentOrderResponse:
+        """Return the driver's active order execution context."""
+        return self._workflow.get_driver_current_order(current_user)
