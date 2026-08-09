@@ -15,6 +15,14 @@ def test_health_endpoint_returns_expected_payload(client: TestClient) -> None:
     }
 
 
+def test_readiness_endpoint_available(client: TestClient) -> None:
+    """Readiness endpoint exposes dependency checks."""
+    response = client.get("/api/v1/health/ready")
+    assert response.status_code in {200, 503}
+    payload = response.json()
+    assert payload["checks"]["database"] == "ok"
+
+
 def test_openapi_documentation_is_available(client: TestClient) -> None:
     """OpenAPI schema is exposed for API documentation."""
     response = client.get("/openapi.json")

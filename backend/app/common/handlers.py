@@ -1,11 +1,15 @@
 """FastAPI exception handlers."""
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.common.exceptions import AppException
 from app.common.responses import ErrorDetail, ErrorResponse
+
+logger = logging.getLogger(__name__)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -40,3 +44,21 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=422,
             content=payload.model_dump(),
         )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(
+        request: Request,
+        exc: Exception,
+    ) -> JSONResponse:
+        logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+        payload = ErrorResponse(
+            error=ErrorDetail(
+                code="INTERNAL_ERROR",
+                message="An unexpected error occurred.",
+            ),
+        )
+        return JSONResponse(
+            status_code=500,
+            content=payload.model_dump(),
+        )
+

@@ -248,6 +248,24 @@
 
 ---
 
+## Sprint 12 — Beta Readiness
+
+* [x] Readiness health probe (`/health/ready`) with DB + Redis checks
+* [x] Request logging middleware with correlation IDs
+* [x] Global unhandled exception handler
+* [x] Production JWT secret validation
+* [x] Performance index migration (`014_beta_performance_indexes`)
+* [x] Beta seed script (`SEED_BETA=true`)
+* [x] End-to-end, security, and multi-tenant integration tests
+* [x] Backup and restore scripts
+* [x] Production Docker Compose (`docker-compose.prod.yml`)
+* [x] CI frontend build and test job
+* [x] Beta checklist, test plan, deployment guide
+* [x] Beta smoke test toolkit
+* [x] Sprint 12 report with prioritized issue register
+
+---
+
 ## Milestone 9 — Documents
 
 * [x] Automatic CMR generation

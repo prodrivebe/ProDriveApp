@@ -39,7 +39,7 @@ where = ["."]
 include = ["app*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "app/workflow/tests"]
+testpaths = ["tests", "app/workflow/tests", "app/ai/tests", "app/planning/tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

@@ -69,11 +69,11 @@ Infrastructure
 
 ## Current Status
 
-Version: 0.3 Alpha
+Version: **0.4 Beta Ready**
 
-Sprints 1–8 complete (backend, dispatcher web app, driver app). **Sprint 9** adds WebSocket + Redis real-time operations, live Operations Board, presence tracking, and live notification/timeline updates.
+Sprints 1–11 complete (backend, dispatcher web, driver app, AI-assisted dispatch, planning board). **Sprint 12** adds beta readiness: health probes, production Docker, backup scripts, integration/security tests, and beta documentation.
 
-Backend: execution workflow, orders, fleet, customers, documents, notifications, realtime events.
+See `docs/BETA_CHECKLIST.md`, `docs/BETA_TEST_PLAN.md`, `docs/BETA_DEPLOYMENT.md`, and `docs/SPRINT_012_REPORT.md`.
 
 ---
 
@@ -100,6 +100,13 @@ Dispatcher dashboard and driver app subscribe to `WS /api/v1/ws?token=...` for l
 ```bash
 cp .env.example .env
 docker compose up --build
+```
+
+Production/beta:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+./scripts/beta/smoke_test.sh
 ```
 
 Services:

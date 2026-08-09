@@ -15,6 +15,7 @@ from app.ai.routes import router as ai_router
 from app.auth.routes import router as auth_router
 from app.cmr.routes import router as cmr_router
 from app.common.handlers import register_exception_handlers
+from app.common.middleware import RequestLoggingMiddleware
 from app.common.routes import router as common_router
 from app.companies.routes import router as companies_router
 from app.config.logging import configure_logging
@@ -52,6 +53,22 @@ from app.users.routes import router as users_router
 logger = logging.getLogger(__name__)
 
 
+def _validate_production_settings(settings: Settings) -> None:
+    """Fail fast when production is misconfigured."""
+    if settings.environment not in {"production", "beta"}:
+        return
+    insecure_secrets = {
+        "change-me-in-production",
+        "change-me-in-production-use-a-long-random-value",
+        "test-secret-key-with-32-byte-minimum-length",
+    }
+    if settings.jwt_secret_key in insecure_secrets:
+        msg = "JWT_SECRET_KEY must be changed before production or beta deployment."
+        raise RuntimeError(msg)
+    if settings.debug:
+        logger.warning("DEBUG mode is enabled in %s environment.", settings.environment)
+
+
 async def _realtime_maintenance_loop(interval_seconds: int = 60) -> None:
     """Periodic stale connection cleanup."""
     from app.realtime.event_service import get_event_service
@@ -67,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Create and configure the FastAPI application."""
     app_settings = settings or get_settings()
     configure_logging(app_settings)
+    _validate_production_settings(app_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -107,6 +125,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_exception_handlers(application)
 
+    application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=app_settings.cors_origin_list,
