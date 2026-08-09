@@ -1,5 +1,7 @@
 """Sprint 5 driver workflow tests."""
 
+import io
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,14 @@ from app.common.enums import UserRole
 from app.companies.models import Company, CompanySettings
 from app.notifications.models import Notification
 from app.users.models import User
+
+MINIMAL_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+    b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+    b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+    b"\x0d\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+VALID_VIN = "1HGBH41JXMN109186"
 
 FULL_WORKFLOW = (
     "accept",
@@ -99,6 +109,46 @@ def _create_assigned_order(
     return order_id
 
 
+def _fulfill_execution_checklist(
+    client: TestClient,
+    headers: dict[str, str],
+    order_id: str,
+) -> None:
+    """Upload evidence required by the Sprint 6 completion checklist."""
+    order = client.get(f"/api/v1/orders/{order_id}", headers=headers)
+    assert order.status_code == 200
+    for vehicle in order.json()["data"]["vehicles"]:
+        vehicle_id = vehicle["id"]
+        vin = vehicle.get("vin") or VALID_VIN
+        verify = client.post(
+            f"/api/v1/orders/{order_id}/vehicles/{vehicle_id}/verify-vin",
+            headers=headers,
+            json={"vin": vin},
+        )
+        assert verify.status_code == 200
+        for photo_type in ("FRONT", "REAR", "LEFT", "RIGHT"):
+            upload = client.post(
+                f"/api/v1/orders/{order_id}/vehicles/{vehicle_id}/photos",
+                headers=headers,
+                files={
+                    "file": (
+                        f"{photo_type.lower()}.png",
+                        io.BytesIO(MINIMAL_PNG),
+                        "image/png",
+                    )
+                },
+                data={"photo_type": photo_type},
+            )
+            assert upload.status_code == 201
+    document = client.post(
+        f"/api/v1/orders/{order_id}/documents",
+        headers=headers,
+        files={"file": ("cmr.png", io.BytesIO(MINIMAL_PNG), "image/png")},
+        data={"document_type": "CMR"},
+    )
+    assert document.status_code == 201
+
+
 def test_full_driver_workflow_transitions(
     client: TestClient,
     admin_tokens: dict[str, str],
@@ -113,6 +163,8 @@ def test_full_driver_workflow_transitions(
     order_id = _create_assigned_order(client, admin_headers, driver_id)
 
     for step in FULL_WORKFLOW:
+        if step == "complete-delivery":
+            _fulfill_execution_checklist(client, driver_headers, order_id)
         response = client.post(
             f"/api/v1/orders/{order_id}/{step}",
             headers=driver_headers,

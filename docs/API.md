@@ -662,11 +662,51 @@ Soft delete only.
 
 Vehicle pickup and delivery stop references must belong to the same order and match stop types.
 
-CRUD implemented in `app/order_vehicles/`. VIN endpoints remain under the same `/vehicles` prefix.
+CRUD implemented in `app/order_vehicles/`. Legacy manager VIN scan endpoints remain under `/vehicles`.
+
+Sprint 6 adds order-scoped VIN verification in `app/vin_verification/`.
 
 ---
 
 # 19. VIN Endpoints
+
+## Order-scoped verification (Sprint 6)
+
+Verify VIN
+
+POST
+
+```
+/orders/{orderId}/vehicles/{vehicleId}/verify-vin
+```
+
+Body
+
+```json
+{
+  "vin": "1HGBH41JXMN109186"
+}
+```
+
+Update verified VIN
+
+PUT
+
+```
+/orders/{orderId}/vehicles/{vehicleId}/vin
+```
+
+VIN history (immutable)
+
+GET
+
+```
+/orders/{orderId}/vehicles/{vehicleId}/vin-history
+```
+
+Driver, dispatcher, and admin roles may verify VIN on assigned orders. History entries are append-only.
+
+## Legacy manager scan endpoints
 
 Scan VIN
 
@@ -690,6 +730,38 @@ VIN changes are always audited.
 
 # 20. Photo Endpoints
 
+## Order-scoped uploads (Sprint 6)
+
+Upload
+
+POST
+
+```
+/orders/{orderId}/vehicles/{vehicleId}/photos
+```
+
+List
+
+GET
+
+```
+/orders/{orderId}/vehicles/{vehicleId}/photos
+```
+
+Delete
+
+DELETE
+
+```
+/photos/{photoId}
+```
+
+Multipart fields: `file`, `photo_type`, optional `gps_latitude`, `gps_longitude`.
+
+Photo types: `FRONT`, `REAR`, `LEFT`, `RIGHT`, `DAMAGE`, `INTERIOR`, `DOCUMENT`, `OTHER`.
+
+## Legacy vehicle-scoped uploads
+
 Upload
 
 POST
@@ -706,19 +778,51 @@ GET
 /vehicles/{id}/photos
 ```
 
+Uploads use multipart/form-data.
+
+---
+
+# 21. CMR and Order Documents
+
+## Versioned order documents (Sprint 6)
+
+Upload
+
+POST
+
+```
+/orders/{orderId}/documents
+```
+
+List
+
+GET
+
+```
+/orders/{orderId}/documents
+```
+
+Get by id
+
+GET
+
+```
+/documents/{documentId}
+```
+
 Delete
 
 DELETE
 
 ```
-/photos/{id}
+/documents/{documentId}
 ```
 
-Uploads use multipart/form-data.
+Uploading a new `CMR` creates a new version. Previous versions are retained.
 
----
+Document types: `CMR`, `DELIVERY_NOTE`, `INSPECTION`, `CUSTOM`.
 
-# 21. CMR Endpoints
+## Legacy CMR generation
 
 Generate
 
@@ -743,6 +847,68 @@ POST
 ```
 /orders/{id}/cmr/upload
 ```
+
+---
+
+# 21a. Vehicle Damage
+
+Report damage
+
+POST
+
+```
+/orders/{orderId}/vehicles/{vehicleId}/damage
+```
+
+List damage
+
+GET
+
+```
+/orders/{orderId}/vehicles/{vehicleId}/damage
+```
+
+Update
+
+PUT
+
+```
+/damage/{damageId}
+```
+
+Delete
+
+DELETE
+
+```
+/damage/{damageId}
+```
+
+Damage reports may reference uploaded vehicle photo ids.
+
+---
+
+# 21b. Completion Checklist
+
+Get checklist
+
+GET
+
+```
+/orders/{orderId}/completion-checklist
+```
+
+Validate completion
+
+POST
+
+```
+/orders/{orderId}/validate-completion
+```
+
+Returns completed items, missing items, completion percentage, and `can_complete`.
+
+Order completion (`POST /orders/{id}/complete-delivery`) enforces checklist validation when the order would reach `COMPLETED`.
 
 ---
 

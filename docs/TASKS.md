@@ -124,6 +124,20 @@
 
 ---
 
+## Sprint 6 — Vehicle Execution and Evidence
+
+* [x] VIN verification with immutable history (`app/vin_verification/`)
+* [x] Order-scoped vehicle photos (`app/vehicle_photos/`)
+* [x] Vehicle damage reporting with photo attachments (`app/vehicle_damage/`)
+* [x] Versioned order documents and CMR uploads (`app/order_documents/`)
+* [x] Completion checklist and enforced order completion (`app/completion_checklist/`)
+* [x] Timeline integration for all evidence actions
+* [x] Notification records for VIN changed, damage reported, CMR uploaded, order ready
+* [x] Local file storage abstraction (`app/common/storage/`)
+* [x] Execution tests and documentation
+
+---
+
 ## Milestone 6 — Customers
 
 * [x] Customer management

@@ -32,7 +32,13 @@ from app.order_stops.routes import router as stops_router
 from app.order_vehicles.routes import router as order_vehicles_router
 from app.orders.routes import router as orders_router
 from app.orders.vehicle_routes import router as vehicle_vin_router
+from app.completion_checklist.routes import router as completion_checklist_router
+from app.order_documents.routes import document_router, router as order_documents_router
 from app.photos.routes import photo_router, vehicle_photos_router
+from app.vehicle_damage.routes import damage_router, router as vehicle_damage_router
+from app.vehicle_photos.routes import photo_router as execution_photo_router
+from app.vehicle_photos.routes import router as execution_vehicle_photos_router
+from app.vin_verification.routes import router as vin_verification_router
 from app.reports.routes import router as reports_router
 from app.search.routes import router as search_router
 from app.trailers.routes import router as trailers_router
@@ -133,6 +139,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(
         vehicle_vin_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        vin_verification_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        execution_vehicle_photos_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        execution_photo_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        vehicle_damage_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        damage_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        order_documents_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        document_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        completion_checklist_router,
         prefix=app_settings.api_v1_prefix,
     )
     application.include_router(

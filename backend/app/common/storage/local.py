@@ -92,11 +92,13 @@ class LocalFileStorage:
         self,
         *,
         company_id: uuid.UUID,
+        order_id: uuid.UUID,
         vehicle_id: uuid.UUID,
         upload_file: UploadFile,
-    ) -> str:
+    ) -> tuple[str, str, int, str]:
         """Validate and persist a vehicle photo upload."""
-        if upload_file.content_type not in ALLOWED_PHOTO_CONTENT_TYPES:
+        content_type = upload_file.content_type or "application/octet-stream"
+        if content_type not in ALLOWED_PHOTO_CONTENT_TYPES:
             raise ValidationError(
                 code="INVALID_PHOTO_TYPE",
                 message="Photo must be a PNG, JPEG, or WEBP image.",
@@ -110,13 +112,38 @@ class LocalFileStorage:
                 message=f"Photo must be smaller than {self._settings.max_photo_size_mb} MB.",
             )
 
-        extension = PHOTO_EXTENSION_BY_CONTENT_TYPE[upload_file.content_type or ""]
-        photo_dir = self._root / "companies" / str(company_id) / "vehicles" / str(vehicle_id)
+        extension = PHOTO_EXTENSION_BY_CONTENT_TYPE[content_type]
+        photo_dir = (
+            self._root
+            / "companies"
+            / str(company_id)
+            / "orders"
+            / str(order_id)
+            / "vehicles"
+            / str(vehicle_id)
+        )
         photo_dir.mkdir(parents=True, exist_ok=True)
-        photo_path = photo_dir / f"{uuid.uuid4()}{extension}"
+        file_name = f"{uuid.uuid4()}{extension}"
+        photo_path = photo_dir / file_name
         photo_path.write_bytes(content)
         relative_path = photo_path.relative_to(self._root).as_posix()
-        return f"/uploads/{relative_path}"
+        return f"/uploads/{relative_path}", file_name, len(content), content_type
+
+    def save_vehicle_photo_legacy(
+        self,
+        *,
+        company_id: uuid.UUID,
+        vehicle_id: uuid.UUID,
+        upload_file: UploadFile,
+    ) -> str:
+        """Backward-compatible photo save without order context."""
+        file_path, _, _, _ = self.save_vehicle_photo(
+            company_id=company_id,
+            order_id=vehicle_id,
+            vehicle_id=vehicle_id,
+            upload_file=upload_file,
+        )
+        return file_path
 
     def save_order_document(
         self,
@@ -125,14 +152,15 @@ class LocalFileStorage:
         order_id: uuid.UUID,
         filename: str,
         content: bytes,
-    ) -> str:
-        """Persist generated document bytes for an order."""
+        content_type: str = "text/html",
+    ) -> tuple[str, str, int]:
+        """Persist generated or uploaded document bytes for an order."""
         document_dir = self._root / "companies" / str(company_id) / "orders" / str(order_id)
         document_dir.mkdir(parents=True, exist_ok=True)
         document_path = document_dir / filename
         document_path.write_bytes(content)
         relative_path = document_path.relative_to(self._root).as_posix()
-        return f"/uploads/{relative_path}"
+        return f"/uploads/{relative_path}", filename, len(content)
 
     def save_signed_document(
         self,

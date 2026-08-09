@@ -173,6 +173,13 @@ class OrderVehicle(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     estimated_weight: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     estimated_height: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    original_vin: Mapped[str | None] = mapped_column(String(17), nullable=True)
+    verified_vin: Mapped[str | None] = mapped_column(String(17), nullable=True)
+    vin_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    vin_verified_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
 

@@ -601,6 +601,102 @@ class AuditService:
             ip_address=ip_address,
         )
 
+    def record_vin_verification(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        action: str,
+        old_value: str | None,
+        new_value: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record VIN verification or change."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_vehicle",
+            entity_id=entity_id,
+            action=action,
+            old_value=old_value,
+            new_value=new_value,
+            ip_address=ip_address,
+        )
+
+    def record_vehicle_photo_uploaded(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record vehicle photo upload."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="vehicle_photo",
+            entity_id=entity_id,
+            action="VEHICLE_PHOTO_UPLOADED",
+            ip_address=ip_address,
+        )
+
+    def record_vehicle_photo_deleted(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record vehicle photo deletion."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="vehicle_photo",
+            entity_id=entity_id,
+            action="VEHICLE_PHOTO_DELETED",
+            ip_address=ip_address,
+        )
+
+    def record_vehicle_damage_reported(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record vehicle damage report."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="vehicle_damage",
+            entity_id=entity_id,
+            action="VEHICLE_DAMAGE_REPORTED",
+            ip_address=ip_address,
+        )
+
+    def record_order_document_uploaded(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        action: str,
+        ip_address: str | None,
+    ) -> None:
+        """Record order document upload."""
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order_document",
+            entity_id=entity_id,
+            action=action,
+            ip_address=ip_address,
+        )
+
     def record_driver_created(
         self,
         *,

@@ -41,11 +41,12 @@ class CmrService:
             raise NotFoundError(code="CUSTOMER_NOT_FOUND", message="Customer not found.")
 
         html_content = build_cmr_html(company=company, customer=customer, order=order)
-        file_path = self._storage.save_order_document(
+        file_path, _, _ = self._storage.save_order_document(
             company_id=current_user.company_id,
             order_id=order_id,
             filename=f"cmr-{order.order_number}.html",
             content=html_content.encode("utf-8"),
+            content_type="text/html",
         )
         document = self._documents.create(
             company_id=current_user.company_id,

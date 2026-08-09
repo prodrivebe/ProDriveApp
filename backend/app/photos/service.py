@@ -45,7 +45,7 @@ class VehiclePhotoService:
     ) -> VehiclePhoto:
         """Upload a photo for a vehicle."""
         vehicle = self._get_vehicle(current_user, vehicle_id)
-        file_path = self._storage.save_vehicle_photo(
+        file_path = self._storage.save_vehicle_photo_legacy(
             company_id=current_user.company_id,
             vehicle_id=vehicle_id,
             upload_file=upload_file,

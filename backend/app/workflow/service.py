@@ -364,6 +364,13 @@ class OrderWorkflowService:
             if all_deliveries_completed(stops)
             else OrderStatus.IN_TRANSIT
         )
+        if target_status == OrderStatus.COMPLETED:
+            from app.completion_checklist.service import CompletionChecklistService
+
+            CompletionChecklistService(self._db).enforce_completion_ready(
+                current_user,
+                order_id,
+            )
         description = (
             "Order completed."
             if target_status == OrderStatus.COMPLETED

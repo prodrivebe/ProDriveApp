@@ -365,6 +365,10 @@ Fields
 * pickup_stop_id
 * delivery_stop_id
 * vin
+* original_vin
+* verified_vin
+* vin_verified_at
+* vin_verified_by
 * make
 * model
 * generation
@@ -393,11 +397,17 @@ vehicle_photos
 Fields
 
 * id
+* company_id
+* order_id
 * vehicle_id
 * file_path
+* file_name
+* file_size
+* content_type
 * photo_type
 * uploaded_by
 * uploaded_at
+* metadata
 * gps_latitude
 * gps_longitude
 
@@ -417,7 +427,103 @@ DAMAGE
 
 DOCUMENT
 
+OTHER
+
 CUSTOM
+
+---
+
+# 10a. VIN Verification History
+
+vin_verification_history
+
+Append-only VIN verification audit trail.
+
+Fields
+
+* id
+* company_id
+* order_id
+* vehicle_id
+* original_vin
+* verified_vin
+* action
+* verified_by
+* verified_at
+
+---
+
+# 10b. Vehicle Damage
+
+vehicle_damage
+
+Fields
+
+* id
+* company_id
+* order_id
+* vehicle_id
+* damage_type
+* severity
+* description
+* location
+* reported_by
+* reported_at
+
+vehicle_damage_photos links damage reports to vehicle_photos.
+
+---
+
+# 10c. Order Documents
+
+order_documents
+
+Versioned order documents separate from legacy `documents` table.
+
+Fields
+
+* id
+* company_id
+* order_id
+* document_type
+* file_path
+* file_name
+* version
+* uploaded_by
+* uploaded_at
+
+document_type
+
+CMR
+
+DELIVERY_NOTE
+
+INSPECTION
+
+CUSTOM
+
+---
+
+# 10d. Order Completion Checklist
+
+order_completion_checklist
+
+Persisted snapshot of completion readiness.
+
+Fields
+
+* id
+* company_id
+* order_id
+* pickup_completed
+* delivery_completed
+* vins_verified
+* photos_uploaded
+* documents_uploaded
+* damage_reports_completed
+* can_complete
+* completion_percentage
+* updated_at
 
 ---
 

@@ -69,7 +69,43 @@ class PhotoType(StrEnum):
     INTERIOR = "INTERIOR"
     DAMAGE = "DAMAGE"
     DOCUMENT = "DOCUMENT"
+    OTHER = "OTHER"
     CUSTOM = "CUSTOM"
+
+
+class OrderDocumentType(StrEnum):
+    """Order document categories."""
+
+    CMR = "CMR"
+    DELIVERY_NOTE = "DELIVERY_NOTE"
+    INSPECTION = "INSPECTION"
+    CUSTOM = "CUSTOM"
+
+
+class DamageType(StrEnum):
+    """Vehicle damage categories."""
+
+    SCRATCH = "SCRATCH"
+    DENT = "DENT"
+    CRACK = "CRACK"
+    BROKEN = "BROKEN"
+    MISSING = "MISSING"
+    OTHER = "OTHER"
+
+
+class DamageSeverity(StrEnum):
+    """Vehicle damage severity levels."""
+
+    MINOR = "MINOR"
+    MODERATE = "MODERATE"
+    MAJOR = "MAJOR"
+
+
+class VinVerificationAction(StrEnum):
+    """VIN verification history actions."""
+
+    VERIFIED = "VERIFIED"
+    CHANGED = "CHANGED"
 
 
 class DocumentType(StrEnum):
