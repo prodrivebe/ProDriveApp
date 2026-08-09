@@ -1,4 +1,4 @@
-"""Backward-compatible AI routes export."""
+"""AI routes package."""
 
 from app.ai.routes.ai_routes import router
 

@@ -582,3 +582,75 @@ The best AI is the one that quietly saves time without taking control.
 Dispatchers should feel more confident because of AI, never less.
 
 Trust is more valuable than automation.
+
+---
+
+# 25. Sprint 10 Implementation (Production v1)
+
+Sprint 10 delivers the first production AI-assisted dispatching workflow with mandatory human approval.
+
+## Module layout
+
+```text
+backend/app/ai/
+  agents/
+    order_parser.py
+    driver_recommendation.py
+  services/
+    ai_service.py          # advisory helpers (route, loading, score, empty-km)
+    suggestion_service.py  # suggestion lifecycle + approval
+  prompts/
+    order_parser.md
+    driver_recommendation.md
+  models/
+    ai_suggestion.py       # AISuggestion + AIAuditLog
+  routes/
+    ai_routes.py
+  tests/
+```
+
+## Agents
+
+| Agent | Input | Output | Mutates data? |
+|-------|-------|--------|---------------|
+| Order Parser | Email / WhatsApp / pasted text | Structured JSON + per-field confidence | No — creates `PENDING` suggestion |
+| Driver Recommendation | Order + fleet context | Recommended driver, alternatives, reasons | No — creates `PENDING` suggestion |
+
+Production v1 uses deterministic heuristics (`prodrive-heuristic-parser-1.0`, `prodrive-heuristic-driver-1.0`) aligned with ADR-007. External LLM integration is deferred.
+
+## Approval workflow
+
+```text
+Input text
+    ↓
+AI suggestion (PENDING)
+    ↓
+Dispatcher review + optional edits
+    ↓
+Approve / Reject
+    ↓
+ORDER_PARSE approve → OrderService.create_order
+DRIVER_RECOMMENDATION approve → audit only
+```
+
+## Audit model
+
+`ai_audit_logs` stores:
+
+* `event_type`: REQUEST, RESPONSE, APPROVED, REJECTED
+* prompt and model version
+* input/output JSON
+* confidence
+* dispatcher decision
+* timestamp
+
+## Dispatcher UI
+
+* **Create order page** — AI panel to paste messages, review confidence, edit fields, approve/reject
+* **Order detail page** — AI driver recommendation panel with reasoning; manual Assign still required
+
+## Security
+
+* Company-scoped suggestions and audit logs
+* Minimal data sent to agents (message text or order ID only)
+* All requests, responses, and decisions logged

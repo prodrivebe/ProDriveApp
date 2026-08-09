@@ -1,9 +1,9 @@
 """AI API schemas."""
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.common.enums import StopType
 from app.orders.schemas import OrderStopCreateRequest, OrderVehicleCreateRequest
@@ -102,3 +102,49 @@ class SuggestEmptyKmResponse(BaseModel):
 
     suggestions: list[EmptyKmSuggestion] = Field(default_factory=list)
     confidence_score: float = Field(ge=0, le=1)
+
+
+class AISuggestionResponse(BaseModel):
+    """Persisted AI suggestion for dispatcher review."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    company_id: uuid.UUID
+    suggestion_type: str
+    input_text: str | None
+    output_json: dict[str, object]
+    confidence: float
+    status: str
+    prompt_version: str
+    model_version: str
+    created_by: uuid.UUID
+    approved_by: uuid.UUID | None
+    created_at: datetime
+    approved_at: datetime | None
+    related_order_id: uuid.UUID | None
+
+
+class ParseOrderSuggestionRequest(BaseModel):
+    """Create an order parse suggestion from unstructured text."""
+
+    message: str = Field(min_length=1, max_length=10000)
+
+
+class RecommendDriverRequest(BaseModel):
+    """Create a driver recommendation suggestion."""
+
+    order_id: uuid.UUID
+
+
+class ApproveSuggestionRequest(BaseModel):
+    """Approve a pending AI suggestion."""
+
+    customer_id: uuid.UUID | None = None
+    edited_output: dict[str, object] | None = None
+
+
+class RejectSuggestionRequest(BaseModel):
+    """Reject a pending AI suggestion."""
+
+    reason: str | None = Field(default=None, max_length=1000)

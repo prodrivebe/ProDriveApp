@@ -140,7 +140,7 @@ def test_ai_parse_order_returns_draft(
     client: TestClient,
     admin_tokens: dict[str, str],
 ) -> None:
-    """AI parse endpoint returns a structured draft without creating data."""
+    """AI parse endpoint returns a pending suggestion without creating data."""
     headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
     response = client.post(
         "/api/v1/ai/parse-order",
@@ -151,9 +151,10 @@ def test_ai_parse_order_returns_draft(
     )
 
     assert response.status_code == 200
-    draft = response.json()["data"]
-    assert draft["confidence_score"] > 0
-    assert len(draft["vehicles"]) >= 1
+    suggestion = response.json()["data"]
+    assert suggestion["status"] == "PENDING"
+    assert suggestion["confidence"] > 0
+    assert len(suggestion["output_json"]["vehicles"]) >= 1
 
 
 def test_customer_history_returns_orders(

@@ -277,3 +277,71 @@ export interface AssignDriverPayload {
   truck_id?: string | null;
   trailer_id?: string | null;
 }
+
+export type AISuggestionStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
+export type AISuggestionType = "ORDER_PARSE" | "DRIVER_RECOMMENDATION";
+
+export interface AISuggestion {
+  id: string;
+  company_id: string;
+  suggestion_type: AISuggestionType;
+  input_text: string | null;
+  output_json: Record<string, unknown>;
+  confidence: number;
+  status: AISuggestionStatus;
+  prompt_version: string;
+  model_version: string;
+  created_by: string;
+  approved_by: string | null;
+  created_at: string;
+  approved_at: string | null;
+  related_order_id: string | null;
+}
+
+export interface ApproveSuggestionPayload {
+  customer_id?: string;
+  edited_output?: Record<string, unknown>;
+}
+
+export interface OrderParseStopDraft {
+  stop_type: "PICKUP" | "DELIVERY";
+  sequence: number;
+  city?: string | null;
+  address?: string | null;
+  country?: string | null;
+}
+
+export interface OrderParseVehicleDraft {
+  make?: string | null;
+  model?: string | null;
+  vin?: string | null;
+}
+
+export interface OrderParseOutput {
+  customer_name?: string | null;
+  pickup_stops: OrderParseStopDraft[];
+  delivery_stops: OrderParseStopDraft[];
+  vehicles: OrderParseVehicleDraft[];
+  planned_pickup_date?: string | null;
+  planned_delivery_date?: string | null;
+  notes?: string | null;
+  missing_fields?: string[];
+  field_confidence: Record<string, number>;
+  overall_confidence?: number;
+  created_order_id?: string;
+  rejection_reason?: string;
+}
+
+export interface DriverRecommendationCandidate {
+  driver_id: string;
+  driver_name: string;
+  confidence: number;
+  reasons: string[];
+}
+
+export interface DriverRecommendationOutput {
+  order_id: string;
+  recommended: DriverRecommendationCandidate | null;
+  alternatives: DriverRecommendationCandidate[];
+  overall_confidence: number;
+}

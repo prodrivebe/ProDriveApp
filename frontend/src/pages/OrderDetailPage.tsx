@@ -32,6 +32,7 @@ import { LoadingState } from "../components/LoadingState";
 import { PhotoGallery } from "../components/PhotoGallery";
 import { StatusChip } from "../components/StatusChip";
 import { TimelineViewer } from "../components/TimelineViewer";
+import { AiDriverPanel } from "../components/AiDriverPanel";
 import { formatDate, formatDateTime, formatStopCities } from "../utils/format";
 import { resolveUploadUrl } from "../app/config";
 import type { VehiclePhoto } from "../types/api";
@@ -231,6 +232,8 @@ export function OrderDetailPage() {
               </Stack>
             </CardContent>
           </Card>
+
+          <AiDriverPanel orderId={orderId} onSelectDriver={setDriverId} />
 
           {checklistQuery.data ? (
             <Card>

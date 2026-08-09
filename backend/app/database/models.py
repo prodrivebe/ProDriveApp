@@ -1,5 +1,6 @@
 """Import all models for Alembic autogenerate support."""
 
+from app.ai.models.ai_suggestion import AIAuditLog, AISuggestion
 from app.audit.models import AuditLog
 from app.auth.models import PasswordResetToken, RefreshToken
 from app.companies.models import Company, CompanySettings
@@ -19,6 +20,8 @@ from app.vehicle_damage.models import VehicleDamage, VehicleDamagePhoto
 from app.vin_verification.models import VinVerificationHistory
 
 __all__ = [
+    "AIAuditLog",
+    "AISuggestion",
     "AuditLog",
     "Company",
     "CompanySettings",

@@ -116,3 +116,19 @@ class DocumentType(StrEnum):
     INVOICE = "INVOICE"
     DELIVERY_NOTE = "DELIVERY_NOTE"
     PHOTO_ARCHIVE = "PHOTO_ARCHIVE"
+
+
+class AISuggestionType(StrEnum):
+    """AI suggestion categories."""
+
+    ORDER_PARSE = "ORDER_PARSE"
+    DRIVER_RECOMMENDATION = "DRIVER_RECOMMENDATION"
+
+
+class AISuggestionStatus(StrEnum):
+    """AI suggestion lifecycle status."""
+
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"

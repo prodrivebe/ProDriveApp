@@ -948,7 +948,11 @@ Core event types:
 
 # 23. AI Endpoints
 
-Parse Customer Request
+All AI endpoints require `ADMIN` or `DISPATCHER` role. AI never modifies business data directly — suggestions require explicit dispatcher approval.
+
+## Suggestion workflow
+
+Parse Customer Request (creates pending suggestion)
 
 POST
 
@@ -956,7 +960,82 @@ POST
 /ai/parse-order
 ```
 
-Suggest Driver
+Request:
+
+```json
+{ "message": "Customer: ACME\nPick up:\nBMW X5\nAmsterdam\nDeliver:\nBrussels" }
+```
+
+Response: `AISuggestionResponse` with `status=PENDING`, `output_json.field_confidence`, and extracted stops/vehicles.
+
+Recommend Driver (creates pending suggestion)
+
+POST
+
+```
+/ai/recommend-driver
+```
+
+Request:
+
+```json
+{ "order_id": "uuid" }
+```
+
+Response: `AISuggestionResponse` with recommended driver, alternatives, and reasoning bullets.
+
+List Suggestions
+
+GET
+
+```
+/ai/suggestions?status=PENDING&suggestion_type=ORDER_PARSE
+```
+
+Get Suggestion
+
+GET
+
+```
+/ai/suggestions/{id}
+```
+
+Approve Suggestion
+
+POST
+
+```
+/ai/suggestions/{id}/approve
+```
+
+Request (order parse):
+
+```json
+{
+  "customer_id": "uuid",
+  "edited_output": { "notes": "Dispatcher corrected notes" }
+}
+```
+
+Approving `ORDER_PARSE` creates a real order via `OrderService`. Approving `DRIVER_RECOMMENDATION` records the decision only — no automatic assignment.
+
+Reject Suggestion
+
+POST
+
+```
+/ai/suggestions/{id}/reject
+```
+
+Request:
+
+```json
+{ "reason": "Incomplete delivery address" }
+```
+
+## Advisory endpoints (read-only, no approval workflow)
+
+Suggest Driver (alias)
 
 POST
 
@@ -980,7 +1059,23 @@ POST
 /ai/suggest-route
 ```
 
-AI endpoints never modify business data.
+Score Order
+
+POST
+
+```
+/ai/score-order
+```
+
+Suggest Empty KM
+
+POST
+
+```
+/ai/suggest-empty-km
+```
+
+Advisory endpoints return suggestions inline and do not persist approval records.
 
 ---
 

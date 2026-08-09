@@ -213,6 +213,24 @@
 
 ---
 
+## Sprint 10 — AI-Assisted Dispatching
+
+* [x] Dedicated AI module (`backend/app/ai/`)
+* [x] Order Parser Agent with per-field confidence scores
+* [x] Driver Recommendation Agent with reasoning
+* [x] `ai_suggestions` and `ai_audit_logs` tables
+* [x] Suggestion approval workflow (approve creates order via `OrderService`)
+* [x] Rejection tracking and audit logging
+* [x] AI API routes (`/ai/parse-order`, `/ai/recommend-driver`, `/ai/suggestions/*`)
+* [x] Dispatcher AI panel on create order page
+* [x] Driver recommendation panel on order detail page
+* [x] Backend and frontend tests (mocked/heuristic providers)
+* [x] API and AI documentation
+* [ ] External LLM provider integration (deferred to Sprint 11)
+* [ ] Push notifications FCM (deferred)
+
+---
+
 ## Milestone 9 — Documents
 
 * [x] Automatic CMR generation

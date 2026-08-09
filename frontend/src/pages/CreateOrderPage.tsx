@@ -26,6 +26,7 @@ import { fleetService } from "../services/fleetService";
 import { ordersService } from "../services/ordersService";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingState } from "../components/LoadingState";
+import { AiOrderPanel } from "../components/AiOrderPanel";
 import { getErrorMessage } from "../utils/errors";
 
 const stopSchema = z.object({
@@ -134,6 +135,11 @@ export function CreateOrderPage() {
       </Typography>
       {createMutation.isError ? <ErrorAlert error={createMutation.error} /> : null}
       {createMutation.isSuccess ? <Alert severity="success">Order created successfully.</Alert> : null}
+
+      <AiOrderPanel
+        customers={customersQuery.data?.items ?? []}
+        onOrderCreated={(orderId) => navigate(`/orders/${orderId}`)}
+      />
 
       <Box component="form" onSubmit={onSubmit}>
         <Stack spacing={2}>
