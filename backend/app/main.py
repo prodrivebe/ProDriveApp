@@ -31,7 +31,7 @@ from app.fleet.routes import router as fleet_router
 from app.notifications.routes import router as notifications_router
 from app.order_stops.routes import router as stops_router
 from app.order_vehicles.routes import router as order_vehicles_router
-from app.orders.routes import router as orders_router
+from app.planning.routes import router as planning_router
 from app.orders.vehicle_routes import router as vehicle_vin_router
 from app.completion_checklist.routes import router as completion_checklist_router
 from app.order_documents.routes import document_router, router as order_documents_router
@@ -149,6 +149,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(
         customers_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        planning_router,
         prefix=app_settings.api_v1_prefix,
     )
     application.include_router(

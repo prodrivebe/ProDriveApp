@@ -161,6 +161,19 @@ class SuggestionService:
             )
             related_order_id = order.id
             output["created_order_id"] = str(order.id)
+        elif suggestion.suggestion_type == AISuggestionType.LOADING_OPTIMIZATION.value:
+            from app.planning.planning_service import PlanningService
+
+            planning = PlanningService(self._db)
+            plan = planning.apply_loading_suggestion(current_user, suggestion, output)
+            output["loading_plan_id"] = str(plan.id)
+            if suggestion.related_order_id is not None:
+                self._orders.record_timeline_event(
+                    current_user,
+                    suggestion.related_order_id,
+                    "OPTIMIZATION_APPLIED",
+                    "Loading optimization approved and applied.",
+                )
 
         updated = self._suggestions.update_status(
             suggestion,

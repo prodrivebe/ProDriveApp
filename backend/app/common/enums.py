@@ -123,6 +123,7 @@ class AISuggestionType(StrEnum):
 
     ORDER_PARSE = "ORDER_PARSE"
     DRIVER_RECOMMENDATION = "DRIVER_RECOMMENDATION"
+    LOADING_OPTIMIZATION = "LOADING_OPTIMIZATION"
 
 
 class AISuggestionStatus(StrEnum):
@@ -132,3 +133,10 @@ class AISuggestionStatus(StrEnum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     EXPIRED = "EXPIRED"
+
+
+class LoadingPlanStatus(StrEnum):
+    """Loading plan lifecycle status."""
+
+    DRAFT = "DRAFT"
+    CONFIRMED = "CONFIRMED"

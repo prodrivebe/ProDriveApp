@@ -185,6 +185,9 @@ export interface Trailer {
   registration_number: string;
   active: boolean;
   trailer_type: string | null;
+  maximum_vehicle_count?: number;
+  maximum_height?: number | null;
+  maximum_weight?: number | null;
 }
 
 export interface FleetOverview {
@@ -279,7 +282,7 @@ export interface AssignDriverPayload {
 }
 
 export type AISuggestionStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
-export type AISuggestionType = "ORDER_PARSE" | "DRIVER_RECOMMENDATION";
+export type AISuggestionType = "ORDER_PARSE" | "DRIVER_RECOMMENDATION" | "LOADING_OPTIMIZATION";
 
 export interface AISuggestion {
   id: string;
@@ -344,4 +347,128 @@ export interface DriverRecommendationOutput {
   recommended: DriverRecommendationCandidate | null;
   alternatives: DriverRecommendationCandidate[];
   overall_confidence: number;
+}
+
+export interface PlanningOrderCard {
+  id: string;
+  order_number: string;
+  status: string;
+  customer_id: string;
+  assigned_driver_id: string | null;
+  assigned_truck_id: string | null;
+  assigned_trailer_id: string | null;
+  planned_pickup_date: string | null;
+  planned_delivery_date: string | null;
+  vehicle_count: number;
+  column: string;
+}
+
+export type OrderSummary = OrderListItem;
+
+export interface ResourceAvailability {
+  id: string;
+  label: string;
+  resource_type: string;
+  available: boolean;
+  active_assignments: number;
+  capacity_indicator: string | null;
+  conflict: boolean;
+  conflict_reason: string | null;
+}
+
+export interface PlanningBoardResponse {
+  columns: Record<string, PlanningOrderCard[]>;
+  drivers: ResourceAvailability[];
+  trucks: ResourceAvailability[];
+  trailers: ResourceAvailability[];
+  active_assignments: Array<Record<string, unknown>>;
+}
+
+export interface PlanningAssignPayload {
+  order_id: string;
+  driver_id?: string;
+  truck_id?: string;
+  trailer_id?: string;
+  clear_assignment?: boolean;
+}
+
+export interface LoadingPositionDraft {
+  vehicle_id: string;
+  vehicle_label?: string | null;
+  upper_deck: boolean;
+  trailer_position: number;
+  loading_order: number;
+  unloading_order: number;
+  destination_city?: string | null;
+  weight_kg?: number | null;
+  height_m?: number | null;
+  confirmed_by_dispatcher?: boolean;
+  ai_generated?: boolean;
+}
+
+export interface LoadPlanPayload {
+  order_id: string;
+  positions?: Array<{
+    vehicle_id: string;
+    upper_deck: boolean;
+    trailer_position: number;
+    loading_order: number;
+    unloading_order: number;
+    destination_city?: string | null;
+  }>;
+  route_sequence?: string[];
+  confirm?: boolean;
+  suggestion_id?: string;
+  acknowledge_warnings?: boolean;
+}
+
+export interface LoadPlanResponse {
+  id: string;
+  order_id: string;
+  trailer_id: string | null;
+  status: string;
+  estimated_total_height: number | null;
+  estimated_total_weight: number | null;
+  estimated_travel_km: number | null;
+  front_axle_percent: number | null;
+  rear_axle_percent: number | null;
+  warnings: string[];
+  positions: LoadingPositionDraft[];
+  route_sequence: string[];
+  created_at: string;
+  confirmed_at: string | null;
+}
+
+export interface OptimizationResponse {
+  suggestion_id: string;
+  order_id: string;
+  loading: Record<string, unknown>;
+  route: Record<string, unknown> | null;
+  validation: Record<string, unknown>;
+  confidence: number;
+  reasoning: string[];
+  status: string;
+}
+
+export interface ValidatePlanPayload {
+  order_id: string;
+  positions: Array<{
+    vehicle_id: string;
+    upper_deck: boolean;
+    trailer_position: number;
+    loading_order: number;
+    unloading_order: number;
+    destination_city?: string | null;
+  }>;
+  route_sequence?: string[];
+}
+
+export interface ValidationResponse {
+  is_valid: boolean;
+  errors: Array<{ code: string; message: string; severity?: string }>;
+  warnings: Array<{ code: string; message: string; severity?: string }>;
+  estimated_total_height_m: number;
+  estimated_total_weight_kg: number;
+  front_axle_percent: number;
+  rear_axle_percent: number;
 }

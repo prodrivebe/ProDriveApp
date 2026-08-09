@@ -17,7 +17,7 @@ from app.trailers.models import Trailer
 from app.trucks.models import Truck
 from app.users.models import User
 from app.vehicle_damage.models import VehicleDamage, VehicleDamagePhoto
-from app.vin_verification.models import VinVerificationHistory
+from app.planning.models.loading_plan import LoadingPlan, LoadingPosition
 
 __all__ = [
     "AIAuditLog",
@@ -31,6 +31,8 @@ __all__ = [
     "Document",
     "Driver",
     "FleetAssignment",
+    "LoadingPlan",
+    "LoadingPosition",
     "Notification",
     "Order",
     "OrderCompletionChecklist",

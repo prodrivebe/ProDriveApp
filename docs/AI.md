@@ -654,3 +654,51 @@ DRIVER_RECOMMENDATION approve → audit only
 * Company-scoped suggestions and audit logs
 * Minimal data sent to agents (message text or order ID only)
 * All requests, responses, and decisions logged
+
+---
+
+# 26. Sprint 11 Implementation (Planning & Loading)
+
+Sprint 11 adds the dispatcher planning board and trailer loading optimization system.
+
+## Module layout
+
+```text
+backend/app/planning/
+  loading_optimizer.py
+  capacity_validator.py
+  route_planner.py
+  planning_service.py
+  models/loading_plan.py
+  routes.py
+  tests/
+```
+
+## Planning board
+
+Kanban columns: Unassigned, Planned, Assigned, Loading, In Transit, Delivering, Completed.
+
+Includes assignment board with driver/truck/trailer availability, capacity indicators, and conflict detection.
+
+## Loading optimization
+
+Deterministic heuristic engine (`prodrive-heuristic-loading-1.0`) recommends:
+
+* deck positions (upper/lower)
+* loading and unloading order
+* estimated height and axle balance
+* conflict warnings
+
+`POST /planning/optimize` creates a pending `LOADING_OPTIMIZATION` AI suggestion. Dispatchers approve via `/ai/suggestions/{id}/approve` before the plan is persisted.
+
+## Validation
+
+`CapacityValidator` enforces vehicle count, height, weight, axle distribution, duplicate positions, trailer compatibility, and feasible unloading sequences.
+
+## Timeline events
+
+* `LOADING_PLAN_CREATED`
+* `LOADING_PLAN_UPDATED`
+* `LOADING_PLAN_OPTIMIZED`
+* `OPTIMIZATION_APPLIED`
+* `ASSIGNMENT_CHANGED`

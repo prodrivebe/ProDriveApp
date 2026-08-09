@@ -153,6 +153,7 @@ export function applyRealtimeEvent(queryClient: QueryClient, event: RealtimeEven
   if (ORDER_EVENT_PREFIXES.some((prefix) => type.startsWith(prefix)) || type.includes("VIN") || type.includes("PHOTO") || type.includes("DAMAGE") || type.includes("DOCUMENT") || type.includes("CMR")) {
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["orders"] });
+    queryClient.invalidateQueries({ queryKey: ["planning"] });
     if (orderId) {
       queryClient.invalidateQueries({ queryKey: ["orders", orderId] });
       queryClient.invalidateQueries({ queryKey: ["orders", orderId, "timeline"] });

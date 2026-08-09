@@ -1079,7 +1079,99 @@ Advisory endpoints return suggestions inline and do not persist approval records
 
 ---
 
-# 24. Notification Endpoints
+# 24. Planning Endpoints
+
+All planning endpoints require `ADMIN` or `DISPATCHER` role. Loading optimizations create AI suggestions that require approval before persistence.
+
+Planning Board
+
+GET
+
+```
+/planning/board?search=&planned_date=&driver_id=&truck_id=&trailer_id=
+```
+
+Returns kanban columns, resource availability, conflicts, and active fleet assignments.
+
+Assign Resources
+
+POST
+
+```
+/planning/assign
+```
+
+Request:
+
+```json
+{
+  "order_id": "uuid",
+  "driver_id": "uuid",
+  "truck_id": "uuid",
+  "trailer_id": "uuid",
+  "clear_assignment": false
+}
+```
+
+Save or Confirm Loading Plan
+
+POST
+
+```
+/planning/load-plan
+```
+
+Request:
+
+```json
+{
+  "order_id": "uuid",
+  "positions": [
+    {
+      "vehicle_id": "uuid",
+      "upper_deck": false,
+      "trailer_position": 1,
+      "loading_order": 1,
+      "unloading_order": 2
+    }
+  ],
+  "confirm": false,
+  "suggestion_id": "uuid",
+  "acknowledge_warnings": true
+}
+```
+
+Get Loading Plan
+
+GET
+
+```
+/planning/load-plan/{order_id}
+```
+
+Optimize Loading and Route
+
+POST
+
+```
+/planning/optimize
+```
+
+Creates a pending `LOADING_OPTIMIZATION` AI suggestion with positions, route sequence, validation, confidence, and reasoning.
+
+Validate Loading Plan
+
+POST
+
+```
+/planning/validate
+```
+
+Returns capacity, height, weight, axle balance, and detailed validation errors.
+
+---
+
+# 25. Notification Endpoints
 
 GET
 

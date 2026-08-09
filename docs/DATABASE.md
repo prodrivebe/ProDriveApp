@@ -527,9 +527,61 @@ Fields
 
 ---
 
-# 11. Trailer Loading
+# 11. Loading Plans (Sprint 11)
+
+loading_plans
+
+Purpose
+
+Persist dispatcher-confirmed trailer loading layouts.
+
+Fields
+
+* id
+* company_id
+* order_id
+* trailer_id
+* status (`DRAFT`, `CONFIRMED`)
+* route_sequence_json
+* estimated_total_height
+* estimated_total_weight
+* estimated_travel_km
+* front_axle_percent
+* rear_axle_percent
+* validation_warnings_json
+* ai_generated
+* confirmed_by
+* confirmed_at
+* created_by
+* updated_by
+* created_at
+* updated_at
 
 loading_positions
+
+Purpose
+
+Vehicle slot assignments on a loading plan.
+
+Fields
+
+* id
+* company_id
+* loading_plan_id
+* vehicle_id
+* upper_deck
+* trailer_position
+* loading_order
+* unloading_order
+* destination_city
+* confirmed_by_dispatcher
+* ai_generated
+
+Never auto-confirm without dispatcher approval.
+
+---
+
+# 12. Legacy Loading Positions (Design Reference)
 
 Purpose
 
@@ -550,7 +602,7 @@ Allows AI optimization while preserving manual overrides.
 
 ---
 
-# 12. Documents
+# 13. Documents
 
 documents
 

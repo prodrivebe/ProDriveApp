@@ -13,6 +13,8 @@ import { CustomersPage } from "../pages/CustomersPage";
 import { CustomerDetailPage } from "../pages/CustomerDetailPage";
 import { DocumentsPage } from "../pages/DocumentsPage";
 import { NotificationsPage } from "../pages/NotificationsPage";
+import { PlanningBoardPage } from "../pages/PlanningBoardPage";
+import { LoadingBoardPage } from "../pages/LoadingBoardPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { useAuth } from "../hooks/useAuth";
 
@@ -47,6 +49,8 @@ export function AppRouter() {
           <Route path="/customers/:customerId" element={<CustomerDetailPage />} />
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/planning" element={<PlanningBoardPage />} />
+          <Route path="/planning/loading/:orderId" element={<LoadingBoardPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

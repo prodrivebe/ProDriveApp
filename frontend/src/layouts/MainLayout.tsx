@@ -6,6 +6,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import DescriptionIcon from "@mui/icons-material/Description";
 import NotificationsIcon from "@mui/icons-material/Notifications";
+import ViewKanbanIcon from "@mui/icons-material/ViewKanban";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -37,6 +38,7 @@ const navItems = [
   { to: "/drivers", label: "Drivers", icon: <PeopleIcon /> },
   { to: "/fleet", label: "Fleet", icon: <DirectionsCarIcon /> },
   { to: "/customers", label: "Customers", icon: <PeopleIcon /> },
+  { to: "/planning", label: "Planning", icon: <ViewKanbanIcon /> },
   { to: "/documents", label: "Documents", icon: <DescriptionIcon /> },
   { to: "/notifications", label: "Notifications", icon: <NotificationsIcon /> },
   { to: "/settings", label: "Settings", icon: <SettingsIcon />, adminOnly: true },

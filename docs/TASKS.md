@@ -226,8 +226,25 @@
 * [x] Driver recommendation panel on order detail page
 * [x] Backend and frontend tests (mocked/heuristic providers)
 * [x] API and AI documentation
-* [ ] External LLM provider integration (deferred to Sprint 11)
+* [ ] External LLM provider integration (deferred to Sprint 12)
 * [ ] Push notifications FCM (deferred)
+
+---
+
+## Sprint 11 — Planning Board and Loading Optimization
+
+* [x] Planning module (`backend/app/planning/`)
+* [x] Planning board API with kanban columns and filters
+* [x] Assignment board with availability and conflict indicators
+* [x] Loading optimizer with deck-aware positions
+* [x] Capacity, height, and weight validation
+* [x] Route sequence planning with travel estimate
+* [x] `loading_plans` and `loading_positions` persistence
+* [x] AI loading optimization suggestions with mandatory approval
+* [x] Planning board and loading board UI
+* [x] Trailer visualization with drag-and-drop positions
+* [x] Real-time planning board invalidation
+* [x] Backend tests and documentation
 
 ---
 
