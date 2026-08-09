@@ -138,6 +138,21 @@
 
 ---
 
+## Sprint 7 — Dispatcher Operations Board
+
+* [x] React + TypeScript dispatcher web app (`frontend/`)
+* [x] JWT authentication with refresh token handling
+* [x] Protected routes and role-based UI
+* [x] Operations board dashboard with live backend data
+* [x] Orders list, detail tabs, and creation form
+* [x] Drivers, fleet, customers, documents, notifications pages
+* [x] Timeline, photo gallery, document upload/preview
+* [x] TanStack Query data layer and typed API services
+* [x] React Hook Form + Zod validation
+* [x] Frontend tests and documentation
+
+---
+
 ## Milestone 6 — Customers
 
 * [x] Customer management

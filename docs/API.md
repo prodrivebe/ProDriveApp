@@ -1121,6 +1121,31 @@ Documentation is generated automatically from the code.
 
 ---
 
+# 31a. Dispatcher Web Application
+
+Sprint 7 frontend (`frontend/`) consumes this API via JWT.
+
+Base URL in development: `http://localhost:5173` with Vite proxy to `/api/v1`.
+
+Authentication flow:
+
+1. `POST /auth/login`
+2. Store access + refresh tokens
+3. Attach `Authorization: Bearer` header
+4. Refresh via `POST /auth/refresh` on 401
+
+Driver role accounts are rejected by the dispatcher UI.
+
+Primary screens:
+
+* Operations board dashboard
+* Orders list, detail, and creation
+* Drivers and fleet management
+* Customers and documents
+* Notifications and admin settings
+
+---
+
 # 30. Versioning Rules
 
 Breaking changes require:

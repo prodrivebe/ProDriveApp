@@ -20,8 +20,9 @@ The platform includes:
 
 ```text
 backend/
+frontend/
 driver_app/
-dispatcher-dashboard/
+dispatcher-dashboard/   (legacy prototype, superseded by frontend/)
 docs/
 specs/
 design/
@@ -70,9 +71,9 @@ Infrastructure
 
 Version: 0.1 Alpha
 
-Sprint 2 (Dispatcher Dashboard) and Sprint 3 (Fleet Management) are complete and stabilized.
+Sprints 1–6 backend complete. Sprint 7 dispatcher web application (`frontend/`) connects to the operational API.
 
-Backend: 72 tests passing. Dispatcher dashboard consumes the API via JWT.
+Backend: execution workflow, orders, fleet, customers, documents, notifications.
 
 ---
 
@@ -95,17 +96,19 @@ Services:
 | Postgres | localhost:5432              |
 | Redis    | localhost:6379              |
 
-### Dispatcher dashboard
+### Dispatcher web application (Sprint 7)
 
 ```bash
-cd dispatcher-dashboard
+cd frontend
 npm install
 npm run dev
 ```
 
 Open http://localhost:5173 (requires backend at http://localhost:8000).
 
-See [dispatcher-dashboard/README.md](dispatcher-dashboard/README.md).
+See [frontend/README.md](frontend/README.md).
+
+The legacy `dispatcher-dashboard/` prototype remains for reference.
 
 ### Backend without Docker
 
