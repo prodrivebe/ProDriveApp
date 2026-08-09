@@ -60,6 +60,14 @@ export function DashboardPage() {
     return <Typography>Loading dashboard...</Typography>;
   }
 
+  if (!kpi.fleet?.drivers || !kpi.fleet?.trucks || !kpi.fleet?.trailers) {
+    return (
+      <Alert severity="error">
+        Dashboard data is incomplete. The fleet summary is missing from the KPI response.
+      </Alert>
+    );
+  }
+
   const waitingAssignment =
     (ordersReport.by_status.ASSIGNED ?? 0) +
     (ordersReport.by_status.READY ?? 0) +
@@ -103,9 +111,15 @@ export function DashboardPage() {
               <Typography variant="h6" gutterBottom>
                 Fleet snapshot
               </Typography>
-              <Typography>Drivers: {kpi.fleet.drivers.active}/{kpi.fleet.drivers.total} active</Typography>
-              <Typography>Trucks: {kpi.fleet.trucks.active}/{kpi.fleet.trucks.total} active</Typography>
-              <Typography>Trailers: {kpi.fleet.trailers.active}/{kpi.fleet.trailers.total} active</Typography>
+              <Typography>
+                Drivers: {kpi.fleet.drivers.active}/{kpi.fleet.drivers.total} active
+              </Typography>
+              <Typography>
+                Trucks: {kpi.fleet.trucks.active}/{kpi.fleet.trucks.total} active
+              </Typography>
+              <Typography>
+                Trailers: {kpi.fleet.trailers.active}/{kpi.fleet.trailers.total} active
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
