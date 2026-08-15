@@ -11,6 +11,15 @@ def test_application_factory_imports_successfully() -> None:
     assert application.title == "ProDrive API"
 
 
+def test_stops_router_is_exported_from_orders_routes() -> None:
+    """Stop routes are exported from orders.routes for main.py imports."""
+    from app.orders.routes import router as orders_router, stops_router
+
+    assert orders_router.prefix == "/orders"
+    assert stops_router.prefix == "/stops"
+    assert len(stops_router.routes) == 2
+
+
 def test_health_endpoint_returns_expected_payload(client: TestClient) -> None:
     """Health endpoint returns service status."""
     response = client.get("/api/v1/health")
