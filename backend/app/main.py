@@ -27,6 +27,7 @@ from app.search.routes import router as search_router
 from app.trailers.routes import router as trailers_router
 from app.trucks.routes import router as trucks_router
 from app.users.routes import router as users_router
+from app.config.cors import configure_cors
 from app.config.logging import configure_logging
 from app.config.settings import Settings, get_settings
 from app.database.redis import RedisClient
@@ -68,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     register_exception_handlers(application)
+    configure_cors(application, app_settings)
 
     application.include_router(
         common_router,
