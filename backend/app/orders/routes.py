@@ -1,4 +1,4 @@
-"""Order API routes."""
+"""Order and stop API routes."""
 
 import uuid
 
