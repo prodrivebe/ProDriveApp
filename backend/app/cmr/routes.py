@@ -27,7 +27,7 @@ def get_cmr_service(
 @router.post("/{order_id}/cmr/generate", response_model=SuccessResponse[DocumentResponse])
 def generate_cmr(
     order_id: uuid.UUID,
-    current_user: User = Depends(require_order_manager),
+    current_user: User = Depends(require_order_actor),
     cmr_service: CmrService = Depends(get_cmr_service),
 ) -> SuccessResponse[DocumentResponse]:
     """Generate a CMR document for an order."""

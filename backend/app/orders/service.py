@@ -112,6 +112,22 @@ class OrderService:
         order.stops.sort(key=lambda stop: stop.sequence)
         return order
 
+    def ensure_cmr_generation_allowed(self, current_user: User, order_id: uuid.UUID) -> Order:
+        """Ensure the caller may generate a CMR for this order."""
+        order = self.get_order(current_user, order_id)
+        if current_user.role in {UserRole.ADMIN, UserRole.DISPATCHER}:
+            return order
+
+        driver = self._get_assigned_driver(order)
+        ensure_workflow_actor(current_user, order, driver)
+        status = OrderStatus(order.status)
+        if status not in {OrderStatus.IN_TRANSIT, OrderStatus.DELIVERING}:
+            raise ValidationError(
+                code="INVALID_ORDER_STATUS",
+                message="CMR can only be generated after loading is complete.",
+            )
+        return order
+
     def _generate_order_number(self, company_id: uuid.UUID) -> str:
         settings = self._companies.get_settings_for_company(company_id)
         prefix = settings.order_number_prefix if settings else None

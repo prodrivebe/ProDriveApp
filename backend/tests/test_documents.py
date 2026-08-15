@@ -83,6 +83,81 @@ def test_admin_can_upload_vehicle_photo(
     assert len(list_response.json()["data"]) == 1
 
 
+def test_assigned_driver_can_generate_cmr_after_loading(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Assigned driver can generate CMR for their active order after loading."""
+    from tests.test_driver_app import _create_driver_with_login
+
+    admin_headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
+    driver_id, driver_headers = _create_driver_with_login(client, admin_headers)
+    customer_id = _create_customer(client, admin_headers)
+    order_response = client.post(
+        "/api/v1/orders",
+        headers=admin_headers,
+        json={"customer_id": customer_id, "vehicles": [{"make": "Audi", "model": "A4"}]},
+    )
+    order_id = order_response.json()["data"]["id"]
+    client.post(
+        f"/api/v1/orders/{order_id}/assign-driver",
+        headers=admin_headers,
+        json={"driver_id": driver_id},
+    )
+
+    for path in ("accept", "arrive-pickup", "complete-loading"):
+        response = client.post(
+            f"/api/v1/orders/{order_id}/{path}",
+            headers=driver_headers,
+        )
+        assert response.status_code == 200, response.text
+
+    generate_response = client.post(
+        f"/api/v1/orders/{order_id}/cmr/generate",
+        headers=driver_headers,
+    )
+    assert generate_response.status_code == 200
+    assert generate_response.json()["data"]["document_type"] == "CMR"
+
+
+def test_driver_cannot_generate_cmr_for_other_drivers_order(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Driver cannot generate CMR for another driver's assigned order."""
+    from tests.test_driver_app import _create_driver_with_login
+
+    admin_headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
+    driver_one_id, driver_one_headers = _create_driver_with_login(client, admin_headers)
+    _, driver_two_headers = _create_driver_with_login(
+        client,
+        admin_headers,
+        email="other.driver@example.com",
+    )
+    customer_id = _create_customer(client, admin_headers)
+    order_response = client.post(
+        "/api/v1/orders",
+        headers=admin_headers,
+        json={"customer_id": customer_id, "vehicles": [{"make": "Volvo", "model": "XC60"}]},
+    )
+    order_id = order_response.json()["data"]["id"]
+    client.post(
+        f"/api/v1/orders/{order_id}/assign-driver",
+        headers=admin_headers,
+        json={"driver_id": driver_one_id},
+    )
+
+    for path in ("accept", "arrive-pickup", "complete-loading"):
+        client.post(f"/api/v1/orders/{order_id}/{path}", headers=driver_one_headers)
+
+    denied = client.post(
+        f"/api/v1/orders/{order_id}/cmr/generate",
+        headers=driver_two_headers,
+    )
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "FORBIDDEN"
+
+
 def test_admin_can_upload_signed_cmr(
     client: TestClient,
     admin_tokens: dict[str, str],

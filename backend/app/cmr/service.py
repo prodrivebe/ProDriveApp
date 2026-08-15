@@ -32,7 +32,7 @@ class CmrService:
 
     def generate_cmr(self, current_user: User, order_id: uuid.UUID) -> Document:
         """Generate a CMR document for an order."""
-        order = self._orders.get_order(current_user, order_id)
+        order = self._orders.ensure_cmr_generation_allowed(current_user, order_id)
         company = self._companies.get_by_id_for_company(current_user.company_id)
         if company is None:
             raise NotFoundError(code="COMPANY_NOT_FOUND", message="Company not found.")

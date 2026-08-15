@@ -16,6 +16,8 @@ def _create_customer(client: TestClient, headers: dict[str, str]) -> str:
 def _create_driver_with_login(
     client: TestClient,
     admin_headers: dict[str, str],
+    *,
+    email: str = "mobile.driver@example.com",
 ) -> tuple[str, dict[str, str]]:
     user_response = client.post(
         "/api/v1/users",
@@ -23,7 +25,7 @@ def _create_driver_with_login(
         json={
             "first_name": "Mobile",
             "last_name": "Driver",
-            "email": "mobile.driver@example.com",
+            "email": email,
             "password": "Driver123!",
             "role": "DRIVER",
             "is_active": True,
@@ -41,7 +43,7 @@ def _create_driver_with_login(
 
     login_response = client.post(
         "/api/v1/auth/login",
-        json={"email": "mobile.driver@example.com", "password": "Driver123!"},
+        json={"email": email, "password": "Driver123!"},
     )
     assert login_response.status_code == 200
     tokens = login_response.json()["data"]
