@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_client.dart';
 import '../services/driver_repository.dart';
+import '../widgets/screen_state_view.dart';
 import 'order_detail_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -14,7 +15,9 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
+  ViewState _state = ViewState.loading;
   List<dynamic> _orders = [];
+  String? _error;
 
   @override
   void initState() {
@@ -23,33 +26,53 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _load() async {
-    final orders = await DriverRepository(widget.apiClient).orders();
-    setState(() => _orders = orders);
+    setState(() {
+      _state = ViewState.loading;
+      _error = null;
+    });
+    try {
+      final orders = await DriverRepository(widget.apiClient).orders();
+      if (!mounted) return;
+      setState(() {
+        _orders = orders;
+        _state = orders.isEmpty ? ViewState.empty : ViewState.success;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _state = ViewState.error;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        itemCount: _orders.length,
-        itemBuilder: (context, index) {
-          final order = _orders[index] as Map<String, dynamic>;
-          return ListTile(
-            title: Text(order['order_number'] as String),
-            subtitle: Text(order['status'] as String),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => OrderDetailScreen(
-                    apiClient: widget.apiClient,
-                    orderId: order['id'] as String,
-                  ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Orders')),
+      body: ScreenStateView(
+        state: _state,
+        errorMessage: _error,
+        emptyMessage: 'No orders assigned.',
+        onRetry: _load,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView.builder(
+            itemCount: _orders.length,
+            itemBuilder: (context, index) {
+              final order = _orders[index] as Map<String, dynamic>;
+              return ListTile(
+                title: Text(order['order_number'] as String),
+                subtitle: Text(order['status'] as String),
+                onTap: () => openOrderWorkflow(
+                  context,
+                  apiClient: widget.apiClient,
+                  orderId: order['id'] as String,
                 ),
               );
             },
-          );
-        },
+          ),
+        ),
       ),
     );
   }
