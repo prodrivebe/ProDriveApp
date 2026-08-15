@@ -3,6 +3,14 @@
 from fastapi.testclient import TestClient
 
 
+def test_application_factory_imports_successfully() -> None:
+    """Application factory imports all routers without missing modules."""
+    from app.main import create_app
+
+    application = create_app()
+    assert application.title == "ProDrive API"
+
+
 def test_health_endpoint_returns_expected_payload(client: TestClient) -> None:
     """Health endpoint returns service status."""
     response = client.get("/api/v1/health")

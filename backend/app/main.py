@@ -18,8 +18,7 @@ from app.customers.routes import router as customers_router
 from app.drivers.routes import router as drivers_router
 from app.fleet.routes import router as fleet_router
 from app.notifications.routes import router as notifications_router
-from app.orders.routes import router as orders_router
-from app.orders.stop_routes import router as stops_router
+from app.orders.routes import router as orders_router, stops_router
 from app.orders.vehicle_routes import router as vehicles_router
 from app.photos.routes import photo_router, vehicle_photos_router
 from app.reports.routes import router as reports_router
