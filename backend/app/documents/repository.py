@@ -35,6 +35,22 @@ class DocumentRepository:
         )
         return self._db.scalar(statement)
 
+    def list_for_order(
+        self,
+        order_id: uuid.UUID,
+        company_id: uuid.UUID,
+    ) -> list[Document]:
+        """Return all documents for an order ordered newest first."""
+        statement = (
+            select(Document)
+            .where(
+                Document.order_id == order_id,
+                Document.company_id == company_id,
+            )
+            .order_by(Document.generated_at.desc())
+        )
+        return list(self._db.scalars(statement).all())
+
     def create(
         self,
         *,

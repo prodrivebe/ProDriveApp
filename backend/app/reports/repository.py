@@ -28,7 +28,7 @@ class ReportRepository:
             .group_by(Order.status)
         )
         rows = self._db.execute(statement).all()
-        return {status: int(count) for status, count in rows}
+        return {str(status): int(count) for status, count in rows}
 
     def driver_activity(self, company_id: uuid.UUID) -> list[tuple]:
         """Return driver activity aggregates joined with user names."""

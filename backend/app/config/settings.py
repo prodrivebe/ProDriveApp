@@ -2,8 +2,17 @@
 
 from functools import lru_cache
 
-from pydantic import Field, RedisDsn, computed_field
+from pydantic import Field, RedisDsn, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_CORS_ALLOWED_ORIGINS: list[str] = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://prodriveservice.eu",
+    "https://www.prodriveservice.eu",
+]
 
 
 class Settings(BaseSettings):
@@ -76,6 +85,20 @@ class Settings(BaseSettings):
     max_logo_size_mb: int = Field(default=5, alias="MAX_LOGO_SIZE_MB")
     max_photo_size_mb: int = Field(default=10, alias="MAX_PHOTO_SIZE_MB")
     max_document_size_mb: int = Field(default=15, alias="MAX_DOCUMENT_SIZE_MB")
+    cors_allowed_origins: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_CORS_ALLOWED_ORIGINS),
+        alias="CORS_ALLOWED_ORIGINS",
+    )
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def parse_cors_allowed_origins(cls, value: object) -> list[str]:
+        """Allow comma-separated CORS origins from environment variables."""
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        if value is None:
+            return list(DEFAULT_CORS_ALLOWED_ORIGINS)
+        return value  # type: ignore[return-value]
 
     @computed_field  # type: ignore[prop-decorator]
     @property

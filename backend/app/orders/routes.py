@@ -1,4 +1,4 @@
-"""Order API routes."""
+"""Order and stop API routes."""
 
 import uuid
 
@@ -9,6 +9,7 @@ from app.common.enums import OrderStatus
 from app.common.pagination import build_list_meta
 from app.common.responses import SuccessResponse, success_response
 from app.database.session import get_db
+from app.documents.schemas import OrderDocumentListItem
 from app.orders.permissions import require_order_actor, require_order_manager
 from app.orders.schemas import (
     AssignDriverRequest,
@@ -17,6 +18,7 @@ from app.orders.schemas import (
     OrderResponse,
     OrderStopCreateRequest,
     OrderStopResponse,
+    OrderStopUpdateRequest,
     OrderTimelineResponse,
     OrderUpdateRequest,
     OrderVehicleCreateRequest,
@@ -26,6 +28,7 @@ from app.orders.service import OrderService
 from app.users.models import User
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
+stops_router = APIRouter(prefix="/stops", tags=["Stops"])
 
 
 def get_client_ip(request: Request) -> str | None:
@@ -91,6 +94,20 @@ def get_order(
     return success_response(OrderResponse.model_validate(order))
 
 
+@router.get(
+    "/{order_id}/documents",
+    response_model=SuccessResponse[list[OrderDocumentListItem]],
+)
+def list_order_documents(
+    order_id: uuid.UUID,
+    current_user: User = Depends(require_order_actor),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[list[OrderDocumentListItem]]:
+    """List documents generated or uploaded for an order."""
+    documents = order_service.list_documents(current_user, order_id)
+    return success_response(documents)
+
+
 @router.put("/{order_id}", response_model=SuccessResponse[OrderResponse])
 def update_order(
     order_id: uuid.UUID,
@@ -146,6 +163,29 @@ def create_stop(
     """Create a stop on an order."""
     stop = order_service.create_stop(current_user, order_id, payload)
     return success_response(OrderStopResponse.model_validate(stop))
+
+
+@stops_router.put("/{stop_id}", response_model=SuccessResponse[OrderStopResponse])
+def update_stop(
+    stop_id: uuid.UUID,
+    payload: OrderStopUpdateRequest,
+    current_user: User = Depends(require_order_manager),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[OrderStopResponse]:
+    """Update a stop."""
+    stop = order_service.update_stop(current_user, stop_id, payload)
+    return success_response(OrderStopResponse.model_validate(stop))
+
+
+@stops_router.delete("/{stop_id}", response_model=SuccessResponse[dict[str, str]])
+def delete_stop(
+    stop_id: uuid.UUID,
+    current_user: User = Depends(require_order_manager),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[dict[str, str]]:
+    """Soft delete a stop."""
+    order_service.delete_stop(current_user, stop_id)
+    return success_response({"message": "Stop deleted successfully."})
 
 
 @router.get("/{order_id}/vehicles", response_model=SuccessResponse[list[OrderVehicleResponse]])
@@ -282,3 +322,6 @@ def list_timeline(
     """Return order timeline entries."""
     entries = order_service.list_timeline(current_user, order_id)
     return success_response([OrderTimelineResponse.model_validate(entry) for entry in entries])
+
+
+__all__ = ["router", "stops_router"]

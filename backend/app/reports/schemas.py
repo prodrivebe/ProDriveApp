@@ -1,13 +1,11 @@
 """Report API schemas."""
 
 import uuid
-from datetime import date, datetime
-
 from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.fleet.schemas import FleetEntitySummary
+from app.fleet.schemas import FleetEntitySummary, FleetOverviewResponse
 
 
 class OrdersReportResponse(BaseModel):
@@ -73,5 +71,5 @@ class KpiDashboardResponse(BaseModel):
     total_customers: int
     total_drivers: int
     active_drivers: int
-    fleet: FleetEntitySummary
+    fleet: FleetOverviewResponse
     generated_at: datetime
