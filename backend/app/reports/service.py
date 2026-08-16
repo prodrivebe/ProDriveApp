@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.common.enums import OrderStatus
 from app.drivers.repository import DriverRepository
-from app.fleet.schemas import FleetEntitySummary
+from app.fleet.schemas import FleetEntitySummary, FleetOverviewResponse
 from app.reports.repository import ReportRepository
 from app.reports.schemas import (
     CustomerActivityItem,
@@ -108,17 +108,10 @@ class ReportService:
             total_customers=self._reports.count_customers(current_user.company_id),
             total_drivers=fleet_report.drivers.total,
             active_drivers=fleet_report.drivers.active,
-            fleet=FleetEntitySummary(
-                total=(
-                    fleet_report.drivers.total
-                    + fleet_report.trucks.total
-                    + fleet_report.trailers.total
-                ),
-                active=(
-                    fleet_report.drivers.active
-                    + fleet_report.trucks.active
-                    + fleet_report.trailers.active
-                ),
+            fleet=FleetOverviewResponse(
+                drivers=fleet_report.drivers,
+                trucks=fleet_report.trucks,
+                trailers=fleet_report.trailers,
             ),
             generated_at=datetime.now(tz=UTC),
         )

@@ -58,6 +58,33 @@ def test_admin_can_generate_and_download_cmr(
     assert get_response.json()["data"]["file_path"].startswith("/uploads/")
 
 
+def test_admin_can_list_order_documents(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Admin can list order documents for dispatcher order detail."""
+    headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
+    order_id, _ = _create_order_with_vehicle(client, headers)
+
+    empty_response = client.get(
+        f"/api/v1/orders/{order_id}/documents",
+        headers=headers,
+    )
+    assert empty_response.status_code == 200
+    assert empty_response.json()["data"] == []
+
+    client.post(f"/api/v1/orders/{order_id}/cmr/generate", headers=headers)
+    documents_response = client.get(
+        f"/api/v1/orders/{order_id}/documents",
+        headers=headers,
+    )
+    assert documents_response.status_code == 200
+    documents = documents_response.json()["data"]
+    assert len(documents) == 1
+    assert documents[0]["document_type"] == "CMR"
+    assert documents[0]["version"] == 2
+
+
 def test_admin_can_upload_vehicle_photo(
     client: TestClient,
     admin_tokens: dict[str, str],

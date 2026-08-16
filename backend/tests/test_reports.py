@@ -31,6 +31,9 @@ def test_reports_kpi_dashboard(
     body = response.json()["data"]
     assert body["total_orders"] >= 1
     assert body["total_customers"] >= 1
+    assert body["fleet"]["drivers"]["total"] >= 0
+    assert body["fleet"]["trucks"]["total"] >= 0
+    assert body["fleet"]["trailers"]["total"] >= 0
 
 
 def test_reports_orders_by_status(

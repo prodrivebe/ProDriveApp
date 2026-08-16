@@ -5,11 +5,14 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.audit.service import AuditService
-from app.common.enums import OrderStatus, UserRole
+from app.common.enums import DocumentType, OrderStatus, UserRole
 from app.common.exceptions import NotFoundError, ValidationError
 from app.common.tenant import ensure_same_company
 from app.companies.repository import CompanyRepository
 from app.customers.repository import CustomerRepository
+from app.documents.repository import DocumentRepository
+from app.documents.models import Document
+from app.documents.schemas import OrderDocumentListItem
 from app.drivers.repository import DriverRepository
 from app.notifications.service import NotificationService
 from app.orders.models import Order, OrderStop, OrderVehicle
@@ -60,6 +63,7 @@ class OrderService:
         self._trucks = TruckRepository(db)
         self._trailers = TrailerRepository(db)
         self._companies = CompanyRepository(db)
+        self._documents = DocumentRepository(db)
         self._audit = AuditService(db)
         self._notifications = NotificationService(db)
 
@@ -111,6 +115,37 @@ class OrderService:
         ]
         order.stops.sort(key=lambda stop: stop.sequence)
         return order
+
+    def list_documents(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+    ) -> list[OrderDocumentListItem]:
+        """Return order documents visible to the current user."""
+        self.get_order(current_user, order_id)
+        documents = self._documents.list_for_order(order_id, current_user.company_id)
+        return [self._to_order_document_item(document) for document in documents]
+
+    @staticmethod
+    def _document_version(document_type: DocumentType) -> int:
+        """Map stored document types to dispatcher version numbers."""
+        if document_type == DocumentType.CMR_SIGNED:
+            return 3
+        if document_type == DocumentType.CMR:
+            return 2
+        return 1
+
+    def _to_order_document_item(self, document: Document) -> OrderDocumentListItem:
+        """Convert a document model to an API list item."""
+        document_type = DocumentType(document.document_type)
+        return OrderDocumentListItem(
+            id=document.id,
+            order_id=document.order_id,
+            document_type=document_type,
+            file_path=document.file_path,
+            generated_at=document.generated_at,
+            version=self._document_version(document_type),
+        )
 
     def _generate_order_number(self, company_id: uuid.UUID) -> str:
         settings = self._companies.get_settings_for_company(company_id)

@@ -9,6 +9,7 @@ from app.common.enums import OrderStatus
 from app.common.pagination import build_list_meta
 from app.common.responses import SuccessResponse, success_response
 from app.database.session import get_db
+from app.documents.schemas import OrderDocumentListItem
 from app.orders.permissions import require_order_actor, require_order_manager
 from app.orders.schemas import (
     AssignDriverRequest,
@@ -91,6 +92,20 @@ def get_order(
     """Return an order."""
     order = order_service.get_order(current_user, order_id)
     return success_response(OrderResponse.model_validate(order))
+
+
+@router.get(
+    "/{order_id}/documents",
+    response_model=SuccessResponse[list[OrderDocumentListItem]],
+)
+def list_order_documents(
+    order_id: uuid.UUID,
+    current_user: User = Depends(require_order_actor),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[list[OrderDocumentListItem]]:
+    """List documents generated or uploaded for an order."""
+    documents = order_service.list_documents(current_user, order_id)
+    return success_response(documents)
 
 
 @router.put("/{order_id}", response_model=SuccessResponse[OrderResponse])
