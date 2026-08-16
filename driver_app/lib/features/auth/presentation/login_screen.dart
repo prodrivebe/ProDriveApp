@@ -12,23 +12,23 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
   String? _error;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    final email = _emailController.text.trim();
+    final username = _usernameController.text.trim();
     final password = _passwordController.text;
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Enter email and password.');
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Enter username and password.');
       return;
     }
 
@@ -38,7 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      await ref.read(authControllerProvider).login(email, password);
+      await ref.read(authControllerProvider).login(username, password);
     } on ApiException catch (error) {
       setState(() => _error = error.userMessage);
     } catch (error) {
@@ -58,6 +58,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 48),
+              Icon(Icons.local_shipping_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 16),
               Text(
                 'ProDrive Driver',
                 style: Theme.of(context).textTheme.headlineMedium,
@@ -71,10 +73,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 48),
               TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
+                controller: _usernameController,
+                decoration: const InputDecoration(labelText: 'Username'),
                 textInputAction: TextInputAction.next,
+                autocorrect: false,
               ),
               const SizedBox(height: 16),
               TextField(

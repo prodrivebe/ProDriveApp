@@ -46,6 +46,19 @@ class UserRepository:
         )
         return list(self._db.scalars(statement).all())
 
+    def get_by_login_identifier(self, identifier: str) -> list[User]:
+        """Return active users matching a username or email address."""
+        normalized = identifier.strip().lower()
+        if "@" in normalized:
+            return self.get_by_email(normalized)
+
+        pattern = f"{normalized}@%"
+        statement = select(User).where(
+            User.email.ilike(pattern),
+            User.deleted_at.is_(None),
+        )
+        return list(self._db.scalars(statement).all())
+
     def get_by_email_for_company(
         self,
         email: str,

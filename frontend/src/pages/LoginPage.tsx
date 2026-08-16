@@ -17,8 +17,8 @@ import { useAuth } from "../hooks/useAuth";
 import { getErrorMessage } from "../utils/errors";
 
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  username: z.string().min(1, "Enter your username"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -36,7 +36,7 @@ export function LoginPage() {
   const onSubmit = handleSubmit(async (values) => {
     setError(null);
     try {
-      await login(values.email, values.password);
+      await login(values.username, values.password);
       navigate("/");
     } catch (err) {
       setError(getErrorMessage(err, "Login failed."));
@@ -44,21 +44,21 @@ export function LoginPage() {
   });
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
+    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2, bgcolor: "background.default" }}>
       <Card sx={{ width: "100%", maxWidth: 420 }}>
         <CardContent>
           <Stack spacing={2} component="form" onSubmit={onSubmit}>
-            <Typography variant="h5" fontWeight={700}>
+            <Typography variant="h5" fontWeight={700} color="primary">
               ProDrive Dispatcher
             </Typography>
             <Typography color="text.secondary">Sign in to manage transport operations.</Typography>
             {error ? <Alert severity="error">{error}</Alert> : null}
             <TextField
-              label="Email"
-              autoComplete="email"
-              error={Boolean(errors.email)}
-              helperText={errors.email?.message}
-              {...register("email")}
+              label="Username"
+              autoComplete="username"
+              error={Boolean(errors.username)}
+              helperText={errors.username?.message}
+              {...register("username")}
             />
             <TextField
               label="Password"

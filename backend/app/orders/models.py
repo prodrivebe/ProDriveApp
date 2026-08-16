@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -70,6 +71,11 @@ class Order(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     )
     planned_pickup_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     planned_delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    customer_reference_numbers: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

@@ -96,10 +96,26 @@ def test_dispatcher_can_list_drivers(client: TestClient) -> None:
         },
     )
     access_token = login_response.json()["data"]["access_token"]
-    response = client.get("/api/v1/drivers", headers=_auth_headers(access_token))
+    headers = _auth_headers(access_token)
+    admin_login = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "admin@example.com",
+            "password": "Admin123!",
+        },
+    )
+    admin_headers = _auth_headers(admin_login.json()["data"]["access_token"])
+    _create_fleet_entities(client, admin_headers, driver_email="dispatcher.list.driver@example.com")
+    response = client.get("/api/v1/drivers", headers=headers)
 
     assert response.status_code == 200
-    assert response.json()["success"] is True
+    body = response.json()
+    assert body["success"] is True
+    driver = next(
+        item for item in body["data"] if item["email"] == "dispatcher.list.driver@example.com"
+    )
+    assert driver["first_name"] == "Fleet"
+    assert driver["last_name"] == "Driver"
 
 
 def test_admin_can_create_driver_profile(

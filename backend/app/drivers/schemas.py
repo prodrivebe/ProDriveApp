@@ -21,6 +21,9 @@ class DriverResponse(BaseModel):
     adr_certificate: str | None
     notes: str | None
     active: bool
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
     created_at: datetime
     updated_at: datetime
 

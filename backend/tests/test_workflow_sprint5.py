@@ -1,15 +1,18 @@
 """Sprint 5 driver workflow tests."""
 
+import base64
 import io
+import uuid
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.audit.models import AuditLog
 from app.auth.security import hash_password
-from app.common.enums import UserRole
+from app.common.enums import StopType, UserRole
 from app.companies.models import Company, CompanySettings
 from app.notifications.models import Notification
+from app.orders.models import OrderStop
 from app.users.models import User
 
 MINIMAL_PNG = (
@@ -27,7 +30,7 @@ FULL_WORKFLOW = (
     "complete-loading",
     "start-transit",
     "arrive-delivery",
-    "start-delivery",
+    "finish-delivery",
     "complete-delivery",
 )
 
@@ -109,44 +112,55 @@ def _create_assigned_order(
     return order_id
 
 
+def _verify_order_vehicles(
+    client: TestClient,
+    headers: dict[str, str],
+    order_id: str,
+) -> None:
+    order = client.get(f"/api/v1/orders/{order_id}", headers=headers)
+    assert order.status_code == 200
+    for vehicle in order.json()["data"]["vehicles"]:
+        verify = client.post(
+            f"/api/v1/orders/{order_id}/vehicles/{vehicle['id']}/verify-vin",
+            headers=headers,
+            json={"vin": vehicle.get("vin") or VALID_VIN},
+        )
+        assert verify.status_code == 200
+
+
+def _upload_signed_cmr(
+    client: TestClient,
+    headers: dict[str, str],
+    order_id: str,
+) -> None:
+    response = client.post(
+        f"/api/v1/orders/{order_id}/documents",
+        headers=headers,
+        files={"file": ("signed-cmr.png", io.BytesIO(MINIMAL_PNG), "image/png")},
+        data={"document_type": "CMR"},
+    )
+    assert response.status_code == 201, response.text
+
+
 def _fulfill_execution_checklist(
     client: TestClient,
     headers: dict[str, str],
     order_id: str,
 ) -> None:
-    """Upload evidence required by the Sprint 6 completion checklist."""
-    order = client.get(f"/api/v1/orders/{order_id}", headers=headers)
-    assert order.status_code == 200
-    for vehicle in order.json()["data"]["vehicles"]:
-        vehicle_id = vehicle["id"]
-        vin = vehicle.get("vin") or VALID_VIN
-        verify = client.post(
-            f"/api/v1/orders/{order_id}/vehicles/{vehicle_id}/verify-vin",
-            headers=headers,
-            json={"vin": vin},
-        )
-        assert verify.status_code == 200
-        for photo_type in ("FRONT", "REAR", "LEFT", "RIGHT"):
-            upload = client.post(
-                f"/api/v1/orders/{order_id}/vehicles/{vehicle_id}/photos",
-                headers=headers,
-                files={
-                    "file": (
-                        f"{photo_type.lower()}.png",
-                        io.BytesIO(MINIMAL_PNG),
-                        "image/png",
-                    )
-                },
-                data={"photo_type": photo_type},
-            )
-            assert upload.status_code == 201
-    document = client.post(
-        f"/api/v1/orders/{order_id}/documents",
+    """Generate CMR draft required before finishing loading."""
+    generate = client.post(
+        f"/api/v1/orders/{order_id}/cmr/generate",
         headers=headers,
-        files={"file": ("cmr.png", io.BytesIO(MINIMAL_PNG), "image/png")},
-        data={"document_type": "CMR"},
     )
-    assert document.status_code == 201
+    assert generate.status_code == 200, generate.text
+
+
+def _generate_cmr(
+    client: TestClient,
+    headers: dict[str, str],
+    order_id: str,
+) -> None:
+    _fulfill_execution_checklist(client, headers, order_id)
 
 
 def test_full_driver_workflow_transitions(
@@ -163,8 +177,17 @@ def test_full_driver_workflow_transitions(
     order_id = _create_assigned_order(client, admin_headers, driver_id)
 
     for step in FULL_WORKFLOW:
-        if step == "complete-delivery":
-            _fulfill_execution_checklist(client, driver_headers, order_id)
+        if step == "start-loading":
+            response = client.post(
+                f"/api/v1/orders/{order_id}/{step}",
+                headers=driver_headers,
+            )
+            assert response.status_code == 200, step
+            _verify_order_vehicles(client, driver_headers, order_id)
+            _generate_cmr(client, driver_headers, order_id)
+            continue
+        if step == "finish-delivery":
+            _upload_signed_cmr(client, driver_headers, order_id)
         response = client.post(
             f"/api/v1/orders/{order_id}/{step}",
             headers=driver_headers,
@@ -194,6 +217,173 @@ def test_invalid_workflow_transition_rejected(
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_ORDER_STATUS"
+
+
+def test_accept_arrived_start_finish_loading_integration(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Accept -> Arrived -> Start Loading -> Finish Loading returns updated order."""
+    admin_headers = _auth(admin_tokens["access_token"])
+    driver_id, driver_headers = _create_driver(
+        client,
+        admin_headers,
+        "loading.integration@example.com",
+    )
+    order_id = _create_assigned_order(client, admin_headers, driver_id)
+
+    accept = client.post(
+        f"/api/v1/orders/{order_id}/accept",
+        headers=driver_headers,
+    )
+    assert accept.status_code == 200
+    assert accept.json()["data"]["status"] == "ACCEPTED"
+
+    arrived = client.post(
+        f"/api/v1/orders/{order_id}/arrive-pickup",
+        headers=driver_headers,
+    )
+    assert arrived.status_code == 200
+    assert arrived.json()["data"]["status"] == "ARRIVED_PICKUP"
+
+    start = client.post(
+        f"/api/v1/orders/{order_id}/start-loading",
+        headers=driver_headers,
+    )
+    assert start.status_code == 200, start.text
+    start_payload = start.json()["data"]
+    assert start_payload["id"] == order_id
+    assert start_payload["status"] == "LOADING"
+
+    _verify_order_vehicles(client, driver_headers, order_id)
+    _generate_cmr(client, driver_headers, order_id)
+
+    finish = client.post(
+        f"/api/v1/orders/{order_id}/complete-loading",
+        headers=driver_headers,
+    )
+    assert finish.status_code == 200, finish.text
+    assert finish.json()["data"]["status"] == "LOADED"
+
+
+def _advance_to_arrived_delivery(
+    client: TestClient,
+    driver_headers: dict[str, str],
+    order_id: str,
+) -> None:
+    for step in (
+        "accept",
+        "arrive-pickup",
+        "start-loading",
+        "complete-loading",
+        "start-transit",
+        "arrive-delivery",
+    ):
+        if step == "complete-loading":
+            _verify_order_vehicles(client, driver_headers, order_id)
+            generate = client.post(
+                f"/api/v1/orders/{order_id}/cmr/generate",
+                headers=driver_headers,
+            )
+            assert generate.status_code == 200, generate.text
+        response = client.post(
+            f"/api/v1/orders/{order_id}/{step}",
+            headers=driver_headers,
+        )
+        assert response.status_code == 200, step
+
+
+def test_arrived_delivery_requires_signed_cmr_before_finish(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Driver must upload signed CMR before finishing delivery."""
+    admin_headers = _auth(admin_tokens["access_token"])
+    driver_id, driver_headers = _create_driver(
+        client,
+        admin_headers,
+        "delivery.cmr.complete@example.com",
+    )
+    order_id = _create_assigned_order(client, admin_headers, driver_id)
+    _advance_to_arrived_delivery(client, driver_headers, order_id)
+
+    order = client.get(f"/api/v1/orders/{order_id}", headers=driver_headers)
+    assert order.status_code == 200
+    assert order.json()["data"]["status"] == "ARRIVED_DELIVERY"
+
+    blocked = client.post(
+        f"/api/v1/orders/{order_id}/finish-delivery",
+        headers=driver_headers,
+    )
+    assert blocked.status_code == 422
+    assert blocked.json()["error"]["code"] == "CMR_REQUIRED"
+
+    _upload_signed_cmr(client, driver_headers, order_id)
+
+    finished = client.post(
+        f"/api/v1/orders/{order_id}/finish-delivery",
+        headers=driver_headers,
+    )
+    assert finished.status_code == 200, finished.text
+    assert finished.json()["data"]["status"] == "DELIVERING"
+
+    completed = client.post(
+        f"/api/v1/orders/{order_id}/complete-delivery",
+        headers=driver_headers,
+    )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["data"]["status"] == "COMPLETED"
+
+    refreshed = client.get(f"/api/v1/orders/{order_id}", headers=admin_headers)
+    assert refreshed.json()["data"]["status"] == "COMPLETED"
+
+    final_stops = client.get(f"/api/v1/orders/{order_id}/stops", headers=admin_headers)
+    final_delivery = next(
+        stop for stop in final_stops.json()["data"] if stop["stop_type"] == "DELIVERY"
+    )
+    assert final_delivery["progress_status"] == "COMPLETED"
+
+
+def test_start_loading_with_duplicate_stop_sequences(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+    db_session: Session,
+) -> None:
+    """Start loading still targets pickup when legacy data shares stop sequence."""
+    admin_headers = _auth(admin_tokens["access_token"])
+    driver_id, driver_headers = _create_driver(
+        client,
+        admin_headers,
+        "duplicate.sequence@example.com",
+    )
+    order_id = _create_assigned_order(client, admin_headers, driver_id)
+
+    delivery_stop = (
+        db_session.query(OrderStop)
+        .filter(
+            OrderStop.order_id == uuid.UUID(order_id),
+            OrderStop.stop_type == StopType.DELIVERY,
+        )
+        .one()
+    )
+    delivery_stop.sequence = 1
+    db_session.commit()
+
+    client.post(f"/api/v1/orders/{order_id}/accept", headers=driver_headers)
+    client.post(f"/api/v1/orders/{order_id}/arrive-pickup", headers=driver_headers)
+
+    start = client.post(
+        f"/api/v1/orders/{order_id}/start-loading",
+        headers=driver_headers,
+    )
+    assert start.status_code == 200, start.text
+    assert start.json()["data"]["status"] == "LOADING"
+
+    stops = client.get(f"/api/v1/orders/{order_id}/stops", headers=admin_headers)
+    pickup = next(
+        stop for stop in stops.json()["data"] if stop["stop_type"] == "PICKUP"
+    )
+    assert pickup["progress_status"] == "LOADING"
 
 
 def test_unauthorized_driver_cannot_execute_workflow(
@@ -287,6 +477,8 @@ def test_workflow_creates_notification_records(
     client.post(f"/api/v1/orders/{order_id}/accept", headers=driver_headers)
     client.post(f"/api/v1/orders/{order_id}/arrive-pickup", headers=driver_headers)
     client.post(f"/api/v1/orders/{order_id}/start-loading", headers=driver_headers)
+    _verify_order_vehicles(client, driver_headers, order_id)
+    _generate_cmr(client, driver_headers, order_id)
     client.post(f"/api/v1/orders/{order_id}/complete-loading", headers=driver_headers)
 
     types = {row.type for row in db_session.query(Notification)}
@@ -320,6 +512,8 @@ def test_stop_progress_is_tracked_through_workflow(
     stops = client.get(f"/api/v1/orders/{order_id}/stops", headers=admin_headers)
     assert stops.json()["data"][0]["progress_status"] == "LOADING"
 
+    _verify_order_vehicles(client, driver_headers, order_id)
+    _generate_cmr(client, driver_headers, order_id)
     client.post(f"/api/v1/orders/{order_id}/complete-loading", headers=driver_headers)
     stops = client.get(f"/api/v1/orders/{order_id}/stops", headers=admin_headers)
     completed_pickup = stops.json()["data"][0]
@@ -362,9 +556,16 @@ def test_completed_order_blocks_workflow(
         admin_headers,
         "completed.workflow@example.com",
     )
-    order_id = _create_assigned_order(client, admin_headers, driver_id, with_stops=False)
+    order_id = _create_assigned_order(client, admin_headers, driver_id)
 
     for step in FULL_WORKFLOW:
+        if step == "start-loading":
+            client.post(f"/api/v1/orders/{order_id}/{step}", headers=driver_headers)
+            _verify_order_vehicles(client, driver_headers, order_id)
+            _generate_cmr(client, driver_headers, order_id)
+            continue
+        if step == "finish-delivery":
+            _upload_signed_cmr(client, driver_headers, order_id)
         client.post(f"/api/v1/orders/{order_id}/{step}", headers=driver_headers)
 
     response = client.post(
@@ -467,6 +668,7 @@ def test_multi_pickup_requires_multiple_cycles(
                 {"stop_type": "PICKUP", "sequence": 2, "city": "B"},
                 {"stop_type": "DELIVERY", "sequence": 3, "city": "C"},
             ],
+            "vehicles": [{"make": "Audi", "model": "A4", "vin": VALID_VIN}],
         },
     )
     order_id = order.json()["data"]["id"]
@@ -484,6 +686,8 @@ def test_multi_pickup_requires_multiple_cycles(
     client.post(f"/api/v1/orders/{order_id}/accept", headers=driver_headers)
     client.post(f"/api/v1/orders/{order_id}/arrive-pickup", headers=driver_headers)
     client.post(f"/api/v1/orders/{order_id}/start-loading", headers=driver_headers)
+    _verify_order_vehicles(client, driver_headers, order_id)
+    _generate_cmr(client, driver_headers, order_id)
     complete_first = client.post(
         f"/api/v1/orders/{order_id}/complete-loading",
         headers=driver_headers,
@@ -492,8 +696,62 @@ def test_multi_pickup_requires_multiple_cycles(
 
     client.post(f"/api/v1/orders/{order_id}/arrive-pickup", headers=driver_headers)
     client.post(f"/api/v1/orders/{order_id}/start-loading", headers=driver_headers)
+    _verify_order_vehicles(client, driver_headers, order_id)
+    _generate_cmr(client, driver_headers, order_id)
     complete_second = client.post(
         f"/api/v1/orders/{order_id}/complete-loading",
         headers=driver_headers,
     )
     assert complete_second.json()["data"]["status"] == "LOADED"
+
+
+def test_driver_can_add_vehicle_during_loading(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Assigned drivers can register vehicles while loading."""
+    admin_headers = _auth(admin_tokens["access_token"])
+    driver_id, driver_headers = _create_driver(
+        client,
+        admin_headers,
+        "loading.vehicle@example.com",
+    )
+    order_id = _create_assigned_order(
+        client,
+        admin_headers,
+        driver_id,
+        with_stops=True,
+    )
+
+    client.post(f"/api/v1/orders/{order_id}/accept", headers=driver_headers)
+    client.post(f"/api/v1/orders/{order_id}/arrive-pickup", headers=driver_headers)
+
+    too_early = client.post(
+        f"/api/v1/orders/{order_id}/vehicles",
+        headers=driver_headers,
+        json={"make": "Blocked", "model": "Car", "vin": VALID_VIN},
+    )
+    assert too_early.status_code == 422
+    assert too_early.json()["error"]["code"] == "INVALID_ORDER_STATUS"
+
+    client.post(f"/api/v1/orders/{order_id}/start-loading", headers=driver_headers)
+    create = client.post(
+        f"/api/v1/orders/{order_id}/vehicles",
+        headers=driver_headers,
+        json={"make": "Mercedes", "model": "C-Class", "vin": VALID_VIN},
+    )
+    assert create.status_code == 201
+    vehicle_id = create.json()["data"]["id"]
+    verify = client.post(
+        f"/api/v1/orders/{order_id}/vehicles/{vehicle_id}/verify-vin",
+        headers=driver_headers,
+        json={"vin": VALID_VIN},
+    )
+    assert verify.status_code == 200
+
+    dispatcher_create = client.post(
+        f"/api/v1/orders/{order_id}/vehicles",
+        headers=admin_headers,
+        json={"make": "BMW", "model": "X5", "vin": "5UXCR6C05M9D12345"},
+    )
+    assert dispatcher_create.status_code == 201

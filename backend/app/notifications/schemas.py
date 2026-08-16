@@ -17,6 +17,7 @@ class NotificationResponse(BaseModel):
     title: str
     message: str
     type: str
+    order_id: uuid.UUID | None = None
     read_at: datetime | None
     created_at: datetime
 

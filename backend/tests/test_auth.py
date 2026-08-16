@@ -16,7 +16,7 @@ def test_login_success(
     response = client.post(
         "/api/v1/auth/login",
         json={
-            "email": test_settings.seed_admin_email,
+            "username": "admin",
             "password": test_settings.seed_admin_password,
         },
     )
@@ -35,7 +35,7 @@ def test_login_invalid_password(client: TestClient, test_settings: Settings) -> 
     response = client.post(
         "/api/v1/auth/login",
         json={
-            "email": test_settings.seed_admin_email,
+            "username": "admin",
             "password": "WrongPassword123!",
         },
     )
@@ -114,7 +114,7 @@ def test_role_authorization_blocks_dispatcher(client: TestClient) -> None:
     login_response = client.post(
         "/api/v1/auth/login",
         json={
-            "email": "dispatcher@example.com",
+            "username": "dispatcher",
             "password": "Dispatch123!",
         },
     )
@@ -146,7 +146,7 @@ def test_password_reset_flow(client: TestClient, test_settings: Settings) -> Non
     old_login = client.post(
         "/api/v1/auth/login",
         json={
-            "email": test_settings.seed_admin_email,
+            "username": "admin",
             "password": test_settings.seed_admin_password,
         },
     )
@@ -155,11 +155,26 @@ def test_password_reset_flow(client: TestClient, test_settings: Settings) -> Non
     new_login = client.post(
         "/api/v1/auth/login",
         json={
-            "email": test_settings.seed_admin_email,
+            "username": "admin",
             "password": "NewAdmin123!",
         },
     )
     assert new_login.status_code == 200
+
+
+def test_login_with_username_local_part(
+    client: TestClient,
+    test_settings: Settings,
+) -> None:
+    """Username without domain resolves via email local part."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "admin",
+            "password": test_settings.seed_admin_password,
+        },
+    )
+    assert response.status_code == 200
 
 
 def test_login_creates_audit_log(
@@ -171,7 +186,7 @@ def test_login_creates_audit_log(
     response = client.post(
         "/api/v1/auth/login",
         json={
-            "email": test_settings.seed_admin_email,
+            "username": "admin",
             "password": test_settings.seed_admin_password,
         },
     )

@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.drivers.models import Driver
 from app.drivers.schemas import DriverCreateRequest, DriverUpdateRequest
@@ -27,7 +27,7 @@ class DriverRepository:
             Driver.id == driver_id,
             Driver.company_id == company_id,
             Driver.deleted_at.is_(None),
-        )
+        ).options(selectinload(Driver.user))
         return self._db.scalar(statement)
 
     def get_by_user_for_company(

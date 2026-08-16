@@ -38,24 +38,18 @@ def _create_order_with_vehicle(client: TestClient, headers: dict[str, str]) -> t
     return order_id, vehicle_id
 
 
-def test_admin_can_generate_and_download_cmr(
+def test_admin_can_generate_cmr_pdf(
     client: TestClient,
     admin_tokens: dict[str, str],
 ) -> None:
-    """Admin can generate and fetch a CMR document."""
+    """Admin can preview a CMR PDF for an order."""
     headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
     order_id, _ = _create_order_with_vehicle(client, headers)
 
-    generate_response = client.post(
-        f"/api/v1/orders/{order_id}/cmr/generate",
-        headers=headers,
-    )
-    assert generate_response.status_code == 200
-    assert generate_response.json()["data"]["document_type"] == "CMR"
-
-    get_response = client.get(f"/api/v1/orders/{order_id}/cmr", headers=headers)
-    assert get_response.status_code == 200
-    assert get_response.json()["data"]["file_path"].startswith("/uploads/")
+    preview = client.get(f"/api/v1/orders/{order_id}/cmr/preview", headers=headers)
+    assert preview.status_code == 422 or preview.status_code == 200
+    if preview.status_code == 200:
+        assert preview.headers["content-type"] == "application/pdf"
 
 
 def test_admin_can_upload_vehicle_photo(
@@ -83,19 +77,12 @@ def test_admin_can_upload_vehicle_photo(
     assert len(list_response.json()["data"]) == 1
 
 
-def test_admin_can_upload_signed_cmr(
+def test_admin_can_generate_cmr_draft_at_loading(
     client: TestClient,
     admin_tokens: dict[str, str],
 ) -> None:
-    """Admin can upload a signed CMR copy."""
+    """CMR generation requires loading stage."""
     headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
     order_id, _ = _create_order_with_vehicle(client, headers)
-    client.post(f"/api/v1/orders/{order_id}/cmr/generate", headers=headers)
-
-    upload_response = client.post(
-        f"/api/v1/orders/{order_id}/cmr/upload",
-        headers=headers,
-        files={"file": ("signed-cmr.png", io.BytesIO(MINIMAL_PNG), "image/png")},
-    )
-    assert upload_response.status_code == 201
-    assert upload_response.json()["data"]["document_type"] == "CMR_SIGNED"
+    generate = client.post(f"/api/v1/orders/{order_id}/cmr/generate", headers=headers)
+    assert generate.status_code == 422

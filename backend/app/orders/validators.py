@@ -1,18 +1,38 @@
-"""Order validation helpers."""
+﻿"""Order validation helpers."""
 
 import re
+from typing import TYPE_CHECKING
 
 from app.common.enums import OrderStatus, StopType, UserRole
 from app.common.exceptions import AuthorizationError, ValidationError
 from app.drivers.models import Driver
 from app.order_stops.validators import validate_stop_sequences
 from app.orders.models import Order, OrderStop
-from app.orders.schemas import OrderStopCreateRequest, OrderVehicleCreateRequest
 from app.users.models import User
 
+if TYPE_CHECKING:
+    from app.orders.schemas import OrderVehicleCreateRequest
+
 VIN_PATTERN = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+MAX_ORDER_VEHICLES = 8
 
 TERMINAL_STATUSES = {OrderStatus.COMPLETED, OrderStatus.CANCELLED}
+
+LOADING_LOCKED_STATUSES = {
+    OrderStatus.LOADED,
+    OrderStatus.IN_TRANSIT,
+    OrderStatus.ARRIVED_DELIVERY,
+    OrderStatus.DELIVERING,
+}
+
+
+def validate_vehicle_count(count: int) -> None:
+    """Ensure an order does not exceed the maximum vehicle limit."""
+    if count > MAX_ORDER_VEHICLES:
+        raise ValidationError(
+            code="TOO_MANY_VEHICLES",
+            message=f"An order may contain at most {MAX_ORDER_VEHICLES} vehicles.",
+        )
 
 
 def normalize_vin(vin: str) -> str:
@@ -35,6 +55,25 @@ def validate_order_editable(order: Order) -> None:
         )
 
 
+def is_loading_locked(status: OrderStatus | str) -> bool:
+    """Return whether vehicle editing is locked after loading completed."""
+    resolved = OrderStatus(status) if isinstance(status, str) else status
+    return resolved in LOADING_LOCKED_STATUSES
+
+
+def ensure_vehicles_editable(order: Order) -> None:
+    """Ensure vehicles on an order can still be added or modified."""
+    validate_order_editable(order)
+    if is_loading_locked(order.status):
+        raise ValidationError(
+            code="LOADING_LOCKED",
+            message=(
+                "Vehicle editing is locked after loading completed. "
+                "Contact dispatcher to reopen loading."
+            ),
+        )
+
+
 def validate_status_transition(order: Order, target_status: OrderStatus) -> None:
     """Ensure a workflow transition is allowed."""
     from app.workflow.validators import validate_status_transition as validate_workflow_status
@@ -44,7 +83,7 @@ def validate_status_transition(order: Order, target_status: OrderStatus) -> None
 
 def validate_vehicle_stop_links(
     stops: list[OrderStop],
-    payload: OrderVehicleCreateRequest,
+    payload: "OrderVehicleCreateRequest",
 ) -> None:
     """Ensure vehicle stop references belong to the order and match stop types."""
     stop_map = {stop.id: stop for stop in stops}

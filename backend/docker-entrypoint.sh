@@ -5,6 +5,7 @@ alembic upgrade head
 
 if [ "${APP_ENV:-development}" = "development" ]; then
   python -m app.scripts.seed_dev
+  python -m app.scripts.ensure_mobile_demo_driver
 fi
 
 if [ "${SEED_BETA:-false}" = "true" ]; then

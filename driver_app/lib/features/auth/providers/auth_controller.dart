@@ -17,15 +17,21 @@ class AuthController extends ChangeNotifier {
   bool get authenticated => _authenticated;
 
   Future<void> _bootstrap() async {
-    final tokens = await _ref.read(authRepositoryProvider).currentTokens();
-    _ref.read(authTokensProvider.notifier).state = tokens;
-    _authenticated = tokens != null;
-    _ready = true;
-    notifyListeners();
+    try {
+      final tokens = await _ref.read(authRepositoryProvider).currentTokens();
+      _ref.read(authTokensProvider.notifier).state = tokens;
+      _authenticated = tokens != null;
+    } catch (error, stackTrace) {
+      debugPrint('Auth bootstrap failed: $error\n$stackTrace');
+      _authenticated = false;
+    } finally {
+      _ready = true;
+      notifyListeners();
+    }
   }
 
-  Future<void> login(String email, String password) async {
-    final tokens = await _ref.read(authRepositoryProvider).login(email, password);
+  Future<void> login(String username, String password) async {
+    final tokens = await _ref.read(authRepositoryProvider).login(username, password);
     _ref.read(authTokensProvider.notifier).state = tokens;
     _authenticated = true;
     notifyListeners();

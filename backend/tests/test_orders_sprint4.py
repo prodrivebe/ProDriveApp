@@ -425,6 +425,12 @@ def test_completed_order_cannot_be_edited(
         "start-delivery",
         "complete-delivery",
     ):
+        if path == "complete-loading":
+            generate = client.post(
+                f"/api/v1/orders/{order['id']}/cmr/generate",
+                headers=driver_headers,
+            )
+            assert generate.status_code == 200, generate.text
         step = client.post(
             f"/api/v1/orders/{order['id']}/{path}",
             headers=driver_headers,

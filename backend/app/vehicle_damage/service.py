@@ -107,6 +107,7 @@ class VehicleDamageService:
             title="Damage reported",
             message=f"Damage reported on order {order.order_number}.",
             notification_type="DAMAGE_REPORTED",
+            order_id=order.id,
         )
         publish_vehicle_execution_event(
             company_id=current_user.company_id,

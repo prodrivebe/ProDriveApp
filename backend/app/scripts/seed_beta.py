@@ -13,6 +13,7 @@ from app.common.enums import OrderStatus, UserRole
 from app.companies.models import Company, CompanySettings
 from app.config.settings import get_settings
 from app.customers.models import Customer
+from app.scripts.demo_data import DEMO_CUSTOMERS, DEMO_DRIVER_USERS, DEMO_TRAILERS, DEMO_TRUCKS
 from app.database.session import init_engine
 from app.drivers.models import Driver
 from app.orders.models import Order, OrderStop, OrderVehicle
@@ -37,7 +38,7 @@ def seed_beta_data(*, force: bool = False) -> None:
             logger.info("Beta seed skipped because users already exist.")
             return
 
-        company = Company(name=settings.seed_company_name or "ProDrive Beta Transport")
+        company = Company(name=settings.seed_company_name or "Bruxelles Auto Transport NV")
         db.add(company)
         db.commit()
         db.refresh(company)
@@ -54,21 +55,21 @@ def seed_beta_data(*, force: bool = False) -> None:
         )
         dispatcher = User(
             company_id=company.id,
-            first_name="Beta",
-            last_name="Dispatcher",
+            first_name="Sophie",
+            last_name="Verstraeten",
             email="dispatcher@beta.local",
             password_hash=hash_password("Dispatch123!"),
             role=UserRole.DISPATCHER,
             is_active=True,
         )
         driver_users = []
-        for index, name in enumerate(["John", "Maria"], start=1):
+        for spec in DEMO_DRIVER_USERS:
             driver_users.append(
                 User(
                     company_id=company.id,
-                    first_name=name,
-                    last_name="Driver",
-                    email=f"driver{index}@beta.local",
+                    first_name=spec["first_name"],
+                    last_name=spec["last_name"],
+                    email=spec["email"],
                     password_hash=hash_password("Driver123!"),
                     role=UserRole.DRIVER,
                     is_active=True,
@@ -80,55 +81,22 @@ def seed_beta_data(*, force: bool = False) -> None:
             db.refresh(user)
 
         drivers = [
-            Driver(company_id=company.id, user_id=user.id, phone=f"+316000000{index}", active=True)
-            for index, user in enumerate(driver_users, start=1)
+            Driver(
+                company_id=company.id,
+                user_id=user.id,
+                phone=spec["phone"],
+                active=True,
+            )
+            for user, spec in zip(driver_users, DEMO_DRIVER_USERS, strict=True)
         ]
-        trucks = [
-            Truck(
-                company_id=company.id,
-                registration_number="BT-TRUCK-01",
-                make="Volvo",
-                model="FH",
-                active=True,
-            ),
-            Truck(
-                company_id=company.id,
-                registration_number="BT-TRUCK-02",
-                make="Scania",
-                model="R450",
-                active=True,
-            ),
-        ]
-        trailers = [
-            Trailer(
-                company_id=company.id,
-                registration_number="BT-TRAILER-01",
-                maximum_vehicle_count=5,
-                maximum_height=4.0,
-                maximum_weight=20000,
-                trailer_type="car_carrier",
-                active=True,
-            ),
-            Trailer(
-                company_id=company.id,
-                registration_number="BT-TRAILER-02",
-                maximum_vehicle_count=3,
-                maximum_height=3.8,
-                maximum_weight=12000,
-                trailer_type="car_carrier",
-                active=True,
-            ),
-        ]
+        trucks = [Truck(company_id=company.id, **spec) for spec in DEMO_TRUCKS]
+        trailers = [Trailer(company_id=company.id, **spec) for spec in DEMO_TRAILERS]
         db.add_all([*drivers, *trucks, *trailers])
         db.commit()
         for item in drivers:
             db.refresh(item)
 
-        customers = [
-            Customer(company_id=company.id, company_name="ACME Auto Logistics", city="Amsterdam"),
-            Customer(company_id=company.id, company_name="EuroCar Imports", city="Rotterdam"),
-            Customer(company_id=company.id, company_name="Nordic Motors BV", city="Utrecht"),
-        ]
+        customers = [Customer(company_id=company.id, **spec) for spec in DEMO_CUSTOMERS[:3]]
         db.add_all(customers)
         db.commit()
         for customer in customers:
@@ -136,11 +104,11 @@ def seed_beta_data(*, force: bool = False) -> None:
 
         today = date.today()
         order_specs = [
-            (OrderStatus.READY, customers[0], "BT-2026-001"),
-            (OrderStatus.ASSIGNED, customers[1], "BT-2026-002"),
-            (OrderStatus.LOADING, customers[2], "BT-2026-003"),
-            (OrderStatus.IN_TRANSIT, customers[0], "BT-2026-004"),
-            (OrderStatus.COMPLETED, customers[1], "BT-2026-005"),
+            (OrderStatus.READY, customers[0], "BAT-2026-001"),
+            (OrderStatus.ASSIGNED, customers[1], "BAT-2026-002"),
+            (OrderStatus.LOADING, customers[2], "BAT-2026-003"),
+            (OrderStatus.IN_TRANSIT, customers[0], "BAT-2026-004"),
+            (OrderStatus.COMPLETED, customers[1], "BAT-2026-005"),
         ]
         for index, (status, customer, order_number) in enumerate(order_specs):
             order = Order(
@@ -164,8 +132,8 @@ def seed_beta_data(*, force: bool = False) -> None:
                         order_id=order.id,
                         stop_type="PICKUP",
                         sequence=1,
-                        city="Amsterdam",
-                        country="NL",
+                        city="Antwerp",
+                        country="BE",
                     ),
                     OrderStop(
                         company_id=company.id,

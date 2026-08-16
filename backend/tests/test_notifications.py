@@ -62,6 +62,7 @@ def test_driver_receives_notification_on_assignment(
     notifications = notifications_response.json()["data"]
     assert len(notifications) >= 1
     assert notifications[0]["type"] == "ORDER_ASSIGNED"
+    assert notifications[0]["order_id"] == order_id
 
 
 def test_user_can_mark_notification_read(client: TestClient, admin_tokens: dict[str, str]) -> None:

@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import app.database.session as db_session_module
@@ -23,6 +22,7 @@ from app.common.ops_middleware import (
 )
 from app.common.routes import router as common_router
 from app.companies.routes import router as companies_router
+from app.config.cors import configure_cors
 from app.config.logging import configure_logging
 from app.config.settings import Settings, get_settings
 from app.customers.routes import router as customers_router
@@ -135,13 +135,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.add_middleware(FeatureFlagMiddleware, settings=app_settings)
     application.add_middleware(MaintenanceModeMiddleware, settings=app_settings)
     application.add_middleware(RequestLoggingMiddleware)
-    application.add_middleware(
-        CORSMiddleware,
-        allow_origins=app_settings.cors_origin_list,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    configure_cors(application, app_settings)
 
     application.include_router(
         common_router,

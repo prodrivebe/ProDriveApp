@@ -1,4 +1,4 @@
-"""VIN verification business logic."""
+﻿"""VIN verification business logic."""
 
 import uuid
 
@@ -17,7 +17,7 @@ from app.notifications.service import NotificationService
 from app.order_timeline.service import OrderTimelineService
 from app.order_vehicles.repository import OrderVehicleRepository
 from app.orders.repository import OrderRepository
-from app.orders.validators import normalize_vin
+from app.orders.validators import ensure_vehicles_editable, normalize_vin
 from app.users.models import User
 from app.realtime.publisher import publish_vehicle_execution_event
 from app.realtime.schemas import RealtimeEventType
@@ -50,6 +50,7 @@ class VinVerificationService:
         normalized_vin = normalize_vin(vin)
         order = get_order_for_company(self._orders, order_id, current_user.company_id)
         ensure_execution_access(current_user, order, self._drivers)
+        ensure_vehicles_editable(order)
         vehicle = get_vehicle_for_order(
             self._vehicles,
             order_id=order_id,
@@ -58,10 +59,7 @@ class VinVerificationService:
         )
         original_vin = vehicle.original_vin or vehicle.vin
         if vehicle.verified_vin is not None and vehicle.verified_vin == normalized_vin:
-            raise ValidationError(
-                code="VIN_ALREADY_VERIFIED",
-                message="This VIN is already verified for the vehicle.",
-            )
+            return self._build_response(vehicle)
 
         if vehicle.original_vin is None:
             vehicle.original_vin = original_vin
@@ -117,6 +115,7 @@ class VinVerificationService:
         normalized_vin = normalize_vin(vin)
         order = get_order_for_company(self._orders, order_id, current_user.company_id)
         ensure_execution_access(current_user, order, self._drivers)
+        ensure_vehicles_editable(order)
         vehicle = get_vehicle_for_order(
             self._vehicles,
             order_id=order_id,
@@ -168,6 +167,7 @@ class VinVerificationService:
             title="VIN changed",
             message=f"VIN changed on order {order.order_number}.",
             notification_type="VIN_CHANGED",
+            order_id=order.id,
         )
         publish_vehicle_execution_event(
             company_id=current_user.company_id,
@@ -231,3 +231,4 @@ class VinVerificationService:
             vin_verified_at=vehicle.vin_verified_at,
             vin_verified_by=vehicle.vin_verified_by,
         )
+

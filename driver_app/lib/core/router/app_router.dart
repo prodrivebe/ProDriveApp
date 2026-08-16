@@ -15,6 +15,7 @@ import '../../features/vehicles/presentation/damage_report_screen.dart';
 import '../../features/vehicles/presentation/vehicle_detail_screen.dart';
 import '../../features/vehicles/presentation/vin_verification_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
 
 class RouterRefreshNotifier extends ChangeNotifier {
   RouterRefreshNotifier(this._ref) {
@@ -35,19 +36,40 @@ final routerRefreshProvider = Provider<RouterRefreshNotifier>((ref) {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refresh = ref.watch(routerRefreshProvider);
-  final auth = ref.watch(authControllerProvider);
 
   return GoRouter(
-    initialLocation: '/home',
+    initialLocation: '/splash',
     refreshListenable: refresh,
     redirect: (context, state) {
-      if (!auth.ready) return null;
-      final loggingIn = state.matchedLocation == '/login';
+      final auth = ref.read(authControllerProvider);
+      final location = state.matchedLocation;
+
+      if (!auth.ready) {
+        return location == '/splash' ? null : '/splash';
+      }
+
+      if (location == '/splash') {
+        return auth.authenticated ? '/home' : '/login';
+      }
+
+      final loggingIn = location == '/login';
       if (!auth.authenticated && !loggingIn) return '/login';
       if (auth.authenticated && loggingIn) return '/home';
       return null;
     },
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('Unable to open ${state.uri.path}'),
+        ),
+      ),
+    ),
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),

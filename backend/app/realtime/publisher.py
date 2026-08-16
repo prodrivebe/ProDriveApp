@@ -225,6 +225,8 @@ def publish_driver_connection(
         ],
     )
 
+
+def _notification_severity(notification_type: str) -> str:
     lowered = notification_type.lower()
     if "reject" in lowered or "damage" in lowered or "delay" in lowered:
         return "warning"

@@ -20,7 +20,7 @@ describe("LoginPage", () => {
   it("validates required fields", async () => {
     renderWithProviders(<LoginPage />);
     await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
-    expect(await screen.findByText(/valid email/i)).toBeInTheDocument();
+    expect(await screen.findByText(/enter your username/i)).toBeInTheDocument();
   });
 
   it("submits credentials", async () => {
@@ -33,12 +33,12 @@ describe("LoginPage", () => {
     });
 
     renderWithProviders(<LoginPage />);
-    await userEvent.type(screen.getByLabelText(/email/i), "admin@example.com");
+    await userEvent.type(screen.getByLabelText(/username/i), "admin");
     await userEvent.type(screen.getByLabelText(/password/i), "Admin123!");
     await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(login).toHaveBeenCalledWith("admin@example.com", "Admin123!");
+      expect(login).toHaveBeenCalledWith("admin", "Admin123!");
     });
   });
 });

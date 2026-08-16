@@ -6,7 +6,7 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.audit.service import AuditService
-from app.common.enums import OrderDocumentType, UserRole
+from app.common.enums import OrderDocumentType, OrderStatus, UserRole
 from app.common.exceptions import NotFoundError, ValidationError
 from app.common.execution_access import ensure_execution_access, get_order_for_company
 from app.common.storage.local import (
@@ -70,6 +70,13 @@ class OrderDocumentService:
     ) -> OrderDocument:
         order = get_order_for_company(self._orders, order_id, current_user.company_id)
         ensure_execution_access(current_user, order, self._drivers)
+        if document_type == OrderDocumentType.CMR:
+            order_status = OrderStatus(order.status)
+            if order_status not in {OrderStatus.LOADING, OrderStatus.ARRIVED_DELIVERY}:
+                raise ValidationError(
+                    code="INVALID_ORDER_STATUS",
+                    message="Signed CMR upload is only available during delivery arrival.",
+                )
         content = upload_file.file.read()
         content_type = upload_file.content_type or "application/octet-stream"
         if content_type not in ALLOWED_DOCUMENT_CONTENT_TYPES:
@@ -136,6 +143,7 @@ class OrderDocumentService:
                 title="CMR uploaded",
                 message=f"CMR uploaded for order {order.order_number}.",
                 notification_type="CMR_UPLOADED",
+                order_id=order.id,
             )
         publish_vehicle_execution_event(
             company_id=current_user.company_id,

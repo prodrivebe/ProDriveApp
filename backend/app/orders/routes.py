@@ -1,5 +1,6 @@
 """Order API routes."""
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -21,9 +22,12 @@ from app.orders.schemas import (
     OrderUpdateRequest,
     OrderVehicleCreateRequest,
     OrderVehicleResponse,
+    ReopenLoadingRequest,
 )
 from app.orders.service import OrderService
 from app.users.models import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -176,10 +180,10 @@ def create_vehicle(
     order_id: uuid.UUID,
     payload: OrderVehicleCreateRequest,
     request: Request,
-    current_user: User = Depends(require_order_manager),
+    current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderVehicleResponse]:
-    """Create a vehicle on an order."""
+    """Create a vehicle on an order (dispatcher or assigned driver during loading)."""
     vehicle = order_service.create_vehicle(
         current_user,
         order_id,
@@ -198,13 +202,30 @@ def assign_driver(
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Assign a driver and optional fleet resources."""
+    logger.info(
+        "POST assign-driver order_id=%s driver_id=%s truck_id=%s trailer_id=%s user_id=%s",
+        order_id,
+        payload.driver_id,
+        payload.truck_id,
+        payload.trailer_id,
+        current_user.id,
+    )
     order = order_service.assign_driver(
         current_user,
         order_id,
         payload,
         get_client_ip(request),
     )
-    return success_response(OrderResponse.model_validate(order))
+    response = success_response(OrderResponse.model_validate(order))
+    logger.info(
+        "Assignment saved order_id=%s status=%s driver=%s truck=%s trailer=%s",
+        order.id,
+        order.status,
+        order.assigned_driver_id,
+        order.assigned_truck_id,
+        order.assigned_trailer_id,
+    )
+    return response
 
 
 @router.post("/{order_id}/accept", response_model=SuccessResponse[OrderResponse])
@@ -251,8 +272,20 @@ def start_loading(
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
     """Start loading at pickup."""
+    logger.info(
+        "POST start-loading order_id=%s user_id=%s",
+        order_id,
+        current_user.id,
+    )
     order = order_service.start_loading(current_user, order_id, get_client_ip(request))
-    return success_response(OrderResponse.model_validate(order))
+    response = success_response(OrderResponse.model_validate(order))
+    logger.info(
+        "POST start-loading success order_id=%s status=%s http_status=%s",
+        order_id,
+        order.status,
+        200,
+    )
+    return response
 
 
 @router.post("/{order_id}/complete-loading", response_model=SuccessResponse[OrderResponse])
@@ -264,6 +297,24 @@ def complete_loading(
 ) -> SuccessResponse[OrderResponse]:
     """Mark loading complete."""
     order = order_service.complete_loading(current_user, order_id, get_client_ip(request))
+    return success_response(OrderResponse.model_validate(order))
+
+
+@router.post("/{order_id}/reopen-loading", response_model=SuccessResponse[OrderResponse])
+def reopen_loading(
+    order_id: uuid.UUID,
+    payload: ReopenLoadingRequest,
+    request: Request,
+    current_user: User = Depends(require_order_manager),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[OrderResponse]:
+    """Reopen loading so vehicles can be edited again (dispatcher only)."""
+    order = order_service.reopen_loading(
+        current_user,
+        order_id,
+        payload.reason,
+        get_client_ip(request),
+    )
     return success_response(OrderResponse.model_validate(order))
 
 
@@ -291,6 +342,18 @@ def arrive_delivery(
     return success_response(OrderResponse.model_validate(order))
 
 
+@router.post("/{order_id}/finish-delivery", response_model=SuccessResponse[OrderResponse])
+def finish_delivery(
+    order_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(require_order_actor),
+    order_service: OrderService = Depends(get_order_service),
+) -> SuccessResponse[OrderResponse]:
+    """Finish delivery after signed CMR upload."""
+    order = order_service.finish_delivery(current_user, order_id, get_client_ip(request))
+    return success_response(OrderResponse.model_validate(order))
+
+
 @router.post("/{order_id}/start-delivery", response_model=SuccessResponse[OrderResponse])
 def start_delivery(
     order_id: uuid.UUID,
@@ -298,7 +361,7 @@ def start_delivery(
     current_user: User = Depends(require_order_actor),
     order_service: OrderService = Depends(get_order_service),
 ) -> SuccessResponse[OrderResponse]:
-    """Start delivery at the current stop."""
+    """Backward-compatible alias for finish-delivery."""
     order = order_service.start_delivery(current_user, order_id, get_client_ip(request))
     return success_response(OrderResponse.model_validate(order))
 

@@ -4,8 +4,8 @@ import '../../../core/connectivity/connectivity_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../sync/data/sync_service.dart';
 import '../../sync/providers/sync_providers.dart';
-import '../../vehicles/data/vehicle_repository.dart';
 import '../../vehicles/providers/vehicle_detail_providers.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 
 final uploadControllerProvider = Provider<UploadController>((ref) => UploadController(ref));
 

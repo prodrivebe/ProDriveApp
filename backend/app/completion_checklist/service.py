@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.common.enums import OrderDocumentType, PhotoType, StopProgressStatus, StopType, UserRole
+from app.common.enums import PhotoType, StopProgressStatus, StopType, UserRole
 from app.common.exceptions import NotFoundError, ValidationError
 from app.common.execution_access import ensure_execution_access, get_order_for_company
 from app.companies.repository import CompanyRepository
@@ -30,6 +30,7 @@ REQUIRED_PHOTO_TYPES = {
     PhotoType.LEFT,
     PhotoType.RIGHT,
 }
+COMPLETION_BLOCKERS: tuple[str, ...] = ()
 CHECKLIST_ITEMS = (
     "pickup_completed",
     "delivery_completed",
@@ -86,6 +87,7 @@ class CompletionChecklistService:
                 title="Order ready for completion",
                 message=f"Order {order.order_number} passed completion validation.",
                 notification_type="ORDER_READY_FOR_COMPLETION",
+                order_id=order.id,
             )
         return CompletionValidationResponse.model_validate(checklist.model_dump())
 
@@ -96,14 +98,13 @@ class CompletionChecklistService:
     ) -> None:
         """Raise when the order cannot be marked completed."""
         checklist = self._compute_and_store(current_user, order_id)
-        if not checklist.can_complete:
-            raise ValidationError(
-                code="CHECKLIST_INCOMPLETE",
-                message=(
-                    "Order completion checklist is incomplete. "
-                    f"Missing: {', '.join(checklist.missing_items)}."
-                ),
-            )
+        if checklist.can_complete:
+            return
+        missing = ", ".join(checklist.missing_items) or "requirements"
+        raise ValidationError(
+            code="COMPLETION_BLOCKED",
+            message=f"Order completion blocked: {missing}.",
+        )
 
     def _compute_and_store(
         self,
@@ -136,8 +137,9 @@ class CompletionChecklistService:
                     photos_uploaded = False
                     break
 
-        documents_uploaded = (
-            self._documents.get_latest_version(order_id, company_id, OrderDocumentType.CMR) > 0
+        documents_uploaded = self._documents.has_signed_cmr_upload(
+            order_id,
+            company_id,
         )
 
         damage_reports_completed = True
@@ -159,8 +161,16 @@ class CompletionChecklistService:
         }
         completed_items = [name for name, done in flags.items() if done]
         missing_items = [name for name, done in flags.items() if not done]
-        completion_percentage = int(len(completed_items) / len(CHECKLIST_ITEMS) * 100)
-        can_complete = len(missing_items) == 0
+        completion_blockers = [
+            name for name in COMPLETION_BLOCKERS if not flags[name]
+        ]
+        completed_count = sum(1 for done in flags.values() if done)
+        completion_percentage = int((completed_count / len(flags)) * 100) if flags else 0
+        can_complete = not completion_blockers and all(flags.values())
+        if completion_blockers:
+            missing_items = list(completion_blockers)
+        elif can_complete:
+            missing_items = []
 
         self._checklists.upsert(
             company_id=company_id,

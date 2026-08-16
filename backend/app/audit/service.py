@@ -471,6 +471,30 @@ class AuditService:
             ip_address=ip_address,
         )
 
+    def record_loading_reopened(
+        self,
+        *,
+        company_id: uuid.UUID,
+        user_id: uuid.UUID,
+        entity_id: str,
+        old_value: str,
+        new_value: str,
+        reason: str | None,
+        ip_address: str | None,
+    ) -> None:
+        """Record a dispatcher reopening loading."""
+        stored_new_value = new_value if not reason else f"{new_value}|{reason}"
+        self._repository.create(
+            company_id=company_id,
+            user_id=user_id,
+            entity="order",
+            entity_id=entity_id,
+            action="LOADING_REOPENED",
+            old_value=old_value,
+            new_value=stored_new_value,
+            ip_address=ip_address,
+        )
+
     def record_order_stop_added(
         self,
         *,

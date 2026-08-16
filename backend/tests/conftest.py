@@ -159,3 +159,17 @@ def admin_tokens(client: TestClient, test_settings: Settings) -> dict[str, str]:
     )
     assert response.status_code == 200
     return response.json()["data"]
+
+
+@pytest.fixture
+def dispatcher_tokens(client: TestClient) -> dict[str, str]:
+    """Return dispatcher access and refresh tokens."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "dispatcher@example.com",
+            "password": "Dispatch123!",
+        },
+    )
+    assert response.status_code == 200
+    return response.json()["data"]

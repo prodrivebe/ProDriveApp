@@ -76,6 +76,7 @@ class NotificationService:
             title=title,
             message=message,
             notification_type=notification_type,
+            order_id=order_id,
         )
         publish_notification_created(
             company_id=company_id,
@@ -96,6 +97,7 @@ class NotificationService:
         title: str,
         message: str,
         notification_type: str,
+        order_id: uuid.UUID | None = None,
     ) -> list[Notification]:
         """Create notifications for company staff with the given roles."""
         staff = self._users.list_by_roles(company_id, roles)
@@ -108,6 +110,7 @@ class NotificationService:
                     title=title,
                     message=message,
                     notification_type=notification_type,
+                    order_id=order_id,
                 )
             )
         return notifications

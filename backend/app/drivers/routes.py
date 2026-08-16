@@ -56,7 +56,7 @@ def list_drivers(
         active=active,
         search=search,
     )
-    data = [DriverResponse.model_validate(driver) for driver in drivers]
+    data = [driver_service.to_response(driver) for driver in drivers]
     return success_response(data, meta=build_list_meta(page, page_size, total))
 
 
@@ -69,7 +69,7 @@ def create_driver(
 ) -> SuccessResponse[DriverResponse]:
     """Create a driver profile."""
     driver = driver_service.create_driver(current_user, payload, get_client_ip(request))
-    return success_response(DriverResponse.model_validate(driver))
+    return success_response(driver_service.to_response(driver))
 
 
 @router.get("/me", response_model=SuccessResponse[DriverResponse])
@@ -79,7 +79,7 @@ def get_my_driver(
 ) -> SuccessResponse[DriverResponse]:
     """Return the current driver's profile."""
     driver = driver_service.get_my_driver(current_user)
-    return success_response(DriverResponse.model_validate(driver))
+    return success_response(driver_service.to_response(driver))
 
 
 @router.get("/me/orders", response_model=SuccessResponse[list[OrderSummaryResponse]])
@@ -124,7 +124,7 @@ def get_driver(
 ) -> SuccessResponse[DriverResponse]:
     """Return a driver profile."""
     driver = driver_service.get_driver(current_user, driver_id)
-    return success_response(DriverResponse.model_validate(driver))
+    return success_response(driver_service.to_response(driver))
 
 
 @router.put("/{driver_id}", response_model=SuccessResponse[DriverResponse])
@@ -142,7 +142,7 @@ def update_driver(
         payload,
         get_client_ip(request),
     )
-    return success_response(DriverResponse.model_validate(driver))
+    return success_response(driver_service.to_response(driver))
 
 
 @router.delete("/{driver_id}", response_model=SuccessResponse[dict[str, str]])

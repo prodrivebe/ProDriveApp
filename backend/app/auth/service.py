@@ -44,11 +44,11 @@ class AuthService:
         ip_address: str | None,
     ) -> TokenResponse:
         """Authenticate a user and issue token pair."""
-        users = self._users.get_by_email(payload.email)
+        users = self._users.get_by_login_identifier(payload.username)
         if len(users) != 1:
             raise AuthenticationError(
                 code="INVALID_CREDENTIALS",
-                message="Invalid email or password.",
+                message="Invalid username or password.",
             )
 
         user = users[0]
@@ -61,7 +61,7 @@ class AuthService:
             )
             raise AuthenticationError(
                 code="INVALID_CREDENTIALS",
-                message="Invalid email or password.",
+                message="Invalid username or password.",
             )
 
         token_response = self._issue_token_pair(user, ip_address)

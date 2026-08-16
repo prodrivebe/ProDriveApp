@@ -1,6 +1,15 @@
 """Driver app API tests."""
 
+import io
+
 from fastapi.testclient import TestClient
+
+MINIMAL_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+    b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+    b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+    b"\x0d\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
 
 
 def _create_customer(client: TestClient, headers: dict[str, str]) -> str:
@@ -147,9 +156,23 @@ def test_driver_workflow_notifies_dispatchers_on_completion(
         "complete-loading",
         "start-transit",
         "arrive-delivery",
-        "start-delivery",
+        "finish-delivery",
         "complete-delivery",
     ):
+        if path == "complete-loading":
+            generate = client.post(
+                f"/api/v1/orders/{order_id}/cmr/generate",
+                headers=driver_headers,
+            )
+            assert generate.status_code == 200, generate.text
+        if path == "finish-delivery":
+            upload = client.post(
+                f"/api/v1/orders/{order_id}/documents",
+                headers=driver_headers,
+                files={"file": ("signed-cmr.png", io.BytesIO(MINIMAL_PNG), "image/png")},
+                data={"document_type": "CMR"},
+            )
+            assert upload.status_code == 201, upload.text
         response = client.post(
             f"/api/v1/orders/{order_id}/{path}",
             headers=driver_headers,

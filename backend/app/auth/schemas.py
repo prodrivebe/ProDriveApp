@@ -1,13 +1,17 @@
 """Authentication request and response schemas."""
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
     """Login credentials."""
 
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    username: str = Field(
+        min_length=1,
+        max_length=255,
+        validation_alias=AliasChoices("username", "email"),
+    )
+    password: str = Field(min_length=6, max_length=128)
 
 
 class TokenResponse(BaseModel):

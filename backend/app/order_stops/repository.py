@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.common.enums import StopProgressStatus
+from app.common.enums import StopProgressStatus, StopType
 from app.orders.models import OrderStop
 from app.order_stops.schemas import OrderStopCreateRequest, OrderStopUpdateRequest
 
@@ -41,7 +41,14 @@ class OrderStopRepository:
             )
             .order_by(OrderStop.sequence.asc())
         )
-        return list(self._db.scalars(statement).all())
+        stops = list(self._db.scalars(statement).all())
+        stops.sort(
+            key=lambda stop: (
+                stop.sequence,
+                0 if stop.stop_type == StopType.PICKUP else 1,
+            )
+        )
+        return stops
 
     def create(
         self,

@@ -1,5 +1,6 @@
 """Order business logic."""
 
+import logging
 import uuid
 
 from sqlalchemy.orm import Session
@@ -37,6 +38,7 @@ from app.orders.validators import (
     normalize_vin,
     validate_order_editable,
     validate_status_transition,
+    validate_vehicle_count,
     validate_vehicle_stop_links,
 )
 from app.workflow.service import OrderWorkflowService
@@ -47,6 +49,7 @@ from app.realtime.publisher import publish_order_event
 from app.realtime.schemas import RealtimeEventType
 
 MAX_PAGE_SIZE = 100
+logger = logging.getLogger(__name__)
 
 
 class OrderService:
@@ -143,6 +146,8 @@ class OrderService:
         self._validate_customer(current_user, payload.customer_id)
         if payload.stops:
             validate_stop_sequences(payload.stops)
+        if payload.vehicles:
+            validate_vehicle_count(len(payload.vehicles))
 
         order = self._orders.create(
             company_id=current_user.company_id,
@@ -405,10 +410,18 @@ class OrderService:
         payload: AssignDriverRequest,
         ip_address: str | None,
     ) -> Order:
-        """Assign fleet resources to an order."""
+        """Assign or update fleet resources on an order."""
+        logger.info(
+            "Assigning fleet to order %s (driver=%s truck=%s trailer=%s) by user %s",
+            order_id,
+            payload.driver_id,
+            payload.truck_id,
+            payload.trailer_id,
+            current_user.id,
+        )
         order = self.get_order(current_user, order_id)
         validate_order_editable(order)
-        validate_status_transition(order, OrderStatus.ASSIGNED)
+        current_status = OrderStatus(order.status)
 
         driver = self._drivers.get_by_id_for_company(payload.driver_id, current_user.company_id)
         if driver is None or not driver.active:
@@ -430,8 +443,40 @@ class OrderService:
                     message="Trailer not found or inactive.",
                 )
 
-        previous_status = OrderStatus(order.status)
-        updated_order = self._orders.update_status(
+        if current_status == OrderStatus.ASSIGNED:
+            self._orders.update_assignment(
+                order,
+                current_user.id,
+                assigned_driver_id=payload.driver_id,
+                assigned_truck_id=payload.truck_id,
+                assigned_trailer_id=payload.trailer_id,
+            )
+            self._record_timeline(
+                current_user,
+                order_id,
+                "DRIVER_REASSIGNED",
+                "Fleet assignment updated.",
+            )
+            self._audit.record_order_driver_assigned(
+                company_id=current_user.company_id,
+                user_id=current_user.id,
+                entity_id=str(order.id),
+                ip_address=ip_address,
+            )
+            reloaded = self.get_order(current_user, order_id)
+            logger.info(
+                "Updated assignment on order %s (driver=%s truck=%s trailer=%s)",
+                order_id,
+                reloaded.assigned_driver_id,
+                reloaded.assigned_truck_id,
+                reloaded.assigned_trailer_id,
+            )
+            return reloaded
+
+        validate_status_transition(order, OrderStatus.ASSIGNED)
+
+        previous_status = current_status
+        self._orders.update_status(
             order,
             OrderStatus.ASSIGNED,
             current_user.id,
@@ -467,7 +512,7 @@ class OrderService:
                 notification_type="ORDER_ASSIGNED",
                 order_id=order.id,
             )
-        reloaded = self.get_order(current_user, updated_order.id)
+        reloaded = self.get_order(current_user, order_id)
         publish_order_event(
             company_id=current_user.company_id,
             order_id=reloaded.id,
@@ -475,6 +520,13 @@ class OrderService:
             order_number=reloaded.order_number,
             status=OrderStatus.ASSIGNED.value,
             driver_user_id=driver.user_id,
+        )
+        logger.info(
+            "Assigned order %s (driver=%s truck=%s trailer=%s)",
+            order_id,
+            reloaded.assigned_driver_id,
+            reloaded.assigned_truck_id,
+            reloaded.assigned_trailer_id,
         )
         return reloaded
 
@@ -523,6 +575,16 @@ class OrderService:
         """Mark loading complete."""
         return self._workflow.complete_loading(current_user, order_id, ip_address)
 
+    def reopen_loading(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        reason: str,
+        ip_address: str | None = None,
+    ) -> Order:
+        """Reopen loading after it was completed (dispatcher only)."""
+        return self._workflow.reopen_loading(current_user, order_id, reason, ip_address)
+
     def start_transit(
         self,
         current_user: User,
@@ -541,14 +603,23 @@ class OrderService:
         """Mark arrival at delivery."""
         return self._workflow.arrive_delivery(current_user, order_id, ip_address)
 
+    def finish_delivery(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
+        """Finish delivery after signed CMR upload."""
+        return self._workflow.finish_delivery(current_user, order_id, ip_address)
+
     def start_delivery(
         self,
         current_user: User,
         order_id: uuid.UUID,
         ip_address: str | None = None,
     ) -> Order:
-        """Start delivery at the current stop."""
-        return self._workflow.start_delivery(current_user, order_id, ip_address)
+        """Backward-compatible alias for finish_delivery."""
+        return self._workflow.finish_delivery(current_user, order_id, ip_address)
 
     def complete_delivery(
         self,

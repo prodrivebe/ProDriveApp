@@ -10,8 +10,12 @@ from app.common.responses import SuccessResponse, success_response
 from app.config.settings import Settings, get_settings
 from app.database.session import get_db
 from app.order_documents.permissions import require_document_actor, require_document_manager
-from app.order_documents.schemas import OrderDocumentResponse
+from app.order_documents.schemas import OrderDocumentResponse, OrderDocumentUploadResponse
 from app.order_documents.service import OrderDocumentService
+from app.order_stops.schemas import OrderStopResponse
+from app.orders.repository import OrderRepository
+from app.orders.schemas import OrderResponse
+from app.workflow.service import OrderWorkflowService
 from app.users.models import User
 
 router = APIRouter(prefix="/orders", tags=["Order Documents"])
@@ -36,7 +40,7 @@ def get_document_service(
 
 @router.post(
     "/{order_id}/documents",
-    response_model=SuccessResponse[OrderDocumentResponse],
+    response_model=SuccessResponse[OrderDocumentUploadResponse],
     status_code=201,
 )
 def upload_order_document(
@@ -46,7 +50,8 @@ def upload_order_document(
     document_type: OrderDocumentType = Form(default=OrderDocumentType.CMR),
     current_user: User = Depends(require_document_actor),
     document_service: OrderDocumentService = Depends(get_document_service),
-) -> SuccessResponse[OrderDocumentResponse]:
+    db: Session = Depends(get_db),
+) -> SuccessResponse[OrderDocumentUploadResponse]:
     document = document_service.upload_document(
         current_user,
         order_id,
@@ -54,7 +59,35 @@ def upload_order_document(
         document_type=document_type,
         ip_address=get_client_ip(request),
     )
-    return success_response(OrderDocumentResponse.model_validate(document))
+    workflow = OrderWorkflowService(db)
+    stop: OrderStopResponse | None = None
+    if document_type == OrderDocumentType.CMR:
+        updated_order, updated_stop = workflow.confirm_delivery_cmr(
+            current_user,
+            order_id,
+            ip_address=get_client_ip(request),
+        )
+        order = OrderResponse.model_validate(updated_order)
+        if updated_stop is not None:
+            stop = OrderStopResponse.model_validate(updated_stop)
+    else:
+        reloaded = OrderRepository(db).get_by_id_for_company(
+            order_id,
+            current_user.company_id,
+            with_details=True,
+        )
+        if reloaded is None:
+            from app.common.exceptions import NotFoundError
+
+            raise NotFoundError(code="ORDER_NOT_FOUND", message="Order not found.")
+        order = OrderResponse.model_validate(reloaded)
+    return success_response(
+        OrderDocumentUploadResponse(
+            document=OrderDocumentResponse.model_validate(document),
+            order=order,
+            stop=stop,
+        )
+    )
 
 
 @router.get(

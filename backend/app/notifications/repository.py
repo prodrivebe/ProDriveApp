@@ -73,6 +73,7 @@ class NotificationRepository:
         title: str,
         message: str,
         notification_type: str,
+        order_id: uuid.UUID | None = None,
     ) -> Notification:
         """Create a notification."""
         notification = Notification(
@@ -81,6 +82,7 @@ class NotificationRepository:
             title=title,
             message=message,
             type=notification_type,
+            order_id=order_id,
             created_at=datetime.now(tz=UTC),
         )
         self._db.add(notification)

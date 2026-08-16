@@ -254,10 +254,17 @@ class SuggestionService:
 
         pickup_date = output.get("planned_pickup_date")
         delivery_date = output.get("planned_delivery_date")
+        refs_raw = output.get("reference_numbers", [])
+        reference_numbers = [
+            str(item).strip()
+            for item in refs_raw
+            if isinstance(item, str) and item.strip()
+        ] if isinstance(refs_raw, list) else []
         payload = OrderCreateRequest(
             customer_id=customer_id,
             planned_pickup_date=date.fromisoformat(pickup_date) if isinstance(pickup_date, str) else None,
             planned_delivery_date=date.fromisoformat(delivery_date) if isinstance(delivery_date, str) else None,
+            customer_reference_numbers=reference_numbers,
             notes=output.get("notes") if isinstance(output.get("notes"), str) else None,
             stops=stops,
             vehicles=vehicles,

@@ -4,9 +4,10 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.common.enums import OrderStatus, StopProgressStatus, StopType
+from app.orders.validators import MAX_ORDER_VEHICLES, is_loading_locked
 
 
 class OrderStopResponse(BaseModel):
@@ -66,6 +67,7 @@ class OrderVehicleResponse(BaseModel):
     pickup_stop_id: uuid.UUID | None
     delivery_stop_id: uuid.UUID | None
     vin: str | None
+    verified_vin: str | None
     make: str | None
     model: str | None
     generation: str | None
@@ -127,11 +129,24 @@ class OrderResponse(BaseModel):
     assigned_trailer_id: uuid.UUID | None
     planned_pickup_date: date | None
     planned_delivery_date: date | None
+    customer_reference_numbers: list[str] = Field(default_factory=list)
     notes: str | None
     created_at: datetime
     updated_at: datetime
     stops: list[OrderStopResponse] = Field(default_factory=list)
     vehicles: list[OrderVehicleResponse] = Field(default_factory=list)
+
+    @computed_field
+    @property
+    def loading_locked(self) -> bool:
+        """Whether vehicle editing is locked after loading completed."""
+        return is_loading_locked(self.status)
+
+
+class ReopenLoadingRequest(BaseModel):
+    """Dispatcher request to reopen loading on a loaded order."""
+
+    reason: str = Field(default="", max_length=2000)
 
 
 class OrderListResponse(BaseModel):
@@ -149,6 +164,7 @@ class OrderListResponse(BaseModel):
     assigned_trailer_id: uuid.UUID | None
     planned_pickup_date: date | None
     planned_delivery_date: date | None
+    customer_reference_numbers: list[str] = Field(default_factory=list)
     notes: str | None
     created_at: datetime
     updated_at: datetime
@@ -160,9 +176,10 @@ class OrderCreateRequest(BaseModel):
     customer_id: uuid.UUID
     planned_pickup_date: date | None = None
     planned_delivery_date: date | None = None
+    customer_reference_numbers: list[str] = Field(default_factory=list, max_length=20)
     notes: str | None = Field(default=None, max_length=5000)
     stops: list[OrderStopCreateRequest] = Field(default_factory=list)
-    vehicles: list[OrderVehicleCreateRequest] = Field(default_factory=list)
+    vehicles: list[OrderVehicleCreateRequest] = Field(default_factory=list, max_length=MAX_ORDER_VEHICLES)
 
 
 class OrderUpdateRequest(BaseModel):
@@ -171,6 +188,7 @@ class OrderUpdateRequest(BaseModel):
     customer_id: uuid.UUID
     planned_pickup_date: date | None = None
     planned_delivery_date: date | None = None
+    customer_reference_numbers: list[str] | None = Field(default=None, max_length=20)
     notes: str | None = Field(default=None, max_length=5000)
     status: OrderStatus | None = None
 

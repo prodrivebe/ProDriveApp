@@ -1,18 +1,21 @@
 """Driver operational workflow business logic."""
 
+import logging
 import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
 from app.audit.service import AuditService
-from app.common.enums import OrderStatus, StopProgressStatus, StopType, UserRole
-from app.common.exceptions import NotFoundError, ValidationError
+from app.common.enums import OrderDocumentType, OrderStatus, StopProgressStatus, StopType, UserRole
+from app.common.exceptions import AuthorizationError, NotFoundError, ValidationError
 from app.drivers.models import Driver
 from app.drivers.repository import DriverRepository
 from app.notifications.service import NotificationService
+from app.order_documents.repository import OrderDocumentRepository
 from app.order_stops.repository import OrderStopRepository
 from app.order_timeline.service import OrderTimelineService
+from app.order_vehicles.repository import OrderVehicleRepository
 from app.orders.models import Order, OrderStop
 from app.orders.repository import OrderRepository
 from app.orders.validators import ensure_workflow_actor
@@ -29,13 +32,20 @@ from app.workflow.validators import (
     NEXT_REQUIRED_ACTIONS,
     all_deliveries_completed,
     all_pickups_completed,
+    get_active_stops,
     get_current_stop,
+    get_delivery_stop,
+    get_pickup_stop,
     get_remaining_stops,
+    ensure_driver_forward_transition,
     validate_current_stop_type,
     validate_order_in_workflow,
     validate_status_transition,
     validate_stop_progress_transition,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class OrderWorkflowService:
@@ -45,6 +55,8 @@ class OrderWorkflowService:
         self._db = db
         self._orders = OrderRepository(db)
         self._stops = OrderStopRepository(db)
+        self._documents = OrderDocumentRepository(db)
+        self._vehicles = OrderVehicleRepository(db)
         self._drivers = DriverRepository(db)
         self._timeline = OrderTimelineService(db)
         self._audit = AuditService(db)
@@ -87,12 +99,11 @@ class OrderWorkflowService:
         if detailed is None:
             raise NotFoundError(code="ORDER_NOT_FOUND", message="Order not found.")
 
-        stops = [stop for stop in detailed.stops if stop.deleted_at is None]
-        stops.sort(key=lambda item: item.sequence)
+        stops = get_active_stops([stop for stop in detailed.stops if stop.deleted_at is None])
         vehicles = [vehicle for vehicle in detailed.vehicles if vehicle.deleted_at is None]
-        current_stop = get_current_stop(stops)
-        remaining_stops = get_remaining_stops(stops, current_stop)
         workflow_status = OrderStatus(detailed.status)
+        current_stop = get_current_stop(stops, workflow_status)
+        remaining_stops = get_remaining_stops(stops, current_stop)
 
         return DriverCurrentOrderResponse(
             order=OrderResponse.model_validate(detailed),
@@ -165,6 +176,7 @@ class OrderWorkflowService:
             title="Order rejected",
             message=f"Order {order.order_number} was rejected by the driver.",
             notification_type="ORDER_REJECTED",
+            order_id=order.id,
         )
         reloaded = self._reload_order(current_user, updated_order.id)
         driver = self._get_assigned_driver(order)
@@ -186,12 +198,21 @@ class OrderWorkflowService:
     ) -> Order:
         """Mark arrival at the current pickup stop."""
         order = self._get_workflow_order(current_user, order_id)
-        stops = self._stops.list_for_order(order.id, current_user.company_id)
-        current_stop = get_current_stop(stops)
-        validate_current_stop_type(current_stop, StopType.PICKUP)
-        if current_stop is not None:
+        stops = get_active_stops(
+            self._stops.list_for_order(order.id, current_user.company_id)
+        )
+        pickup_stop = get_pickup_stop(stops)
+        logger.info(
+            "Workflow arrive_pickup order_id=%s current_status=%s pickup_stop=%s pickup_progress=%s",
+            order.id,
+            order.status,
+            pickup_stop.id if pickup_stop is not None else None,
+            pickup_stop.progress_status if pickup_stop is not None else None,
+        )
+        validate_current_stop_type(pickup_stop, StopType.PICKUP)
+        if pickup_stop is not None:
             self._advance_stop_progress(
-                current_stop,
+                pickup_stop,
                 StopProgressStatus.ARRIVED,
                 current_user.id,
             )
@@ -215,23 +236,51 @@ class OrderWorkflowService:
     ) -> Order:
         """Start loading at the current pickup stop."""
         order = self._get_workflow_order(current_user, order_id)
-        stops = self._stops.list_for_order(order.id, current_user.company_id)
-        current_stop = get_current_stop(stops)
-        validate_current_stop_type(current_stop, StopType.PICKUP)
-        if current_stop is not None:
-            self._advance_stop_progress(
-                current_stop,
-                StopProgressStatus.LOADING,
-                current_user.id,
-            )
-        return self._transition(
+        current_status = OrderStatus(order.status)
+        logger.info(
+            "Workflow start_loading begin order_id=%s current_status=%s user_id=%s",
+            order.id,
+            current_status.value,
+            current_user.id,
+        )
+        validate_status_transition(order, OrderStatus.LOADING)
+        logger.info(
+            "Workflow start_loading validation passed order_id=%s %s -> LOADING",
+            order.id,
+            current_status.value,
+        )
+
+        stops = get_active_stops(
+            self._stops.list_for_order(order.id, current_user.company_id)
+        )
+        pickup_stop = get_pickup_stop(stops)
+        logger.info(
+            "Workflow start_loading pickup_stop order_id=%s stop_id=%s progress=%s",
+            order.id,
+            pickup_stop.id if pickup_stop is not None else None,
+            pickup_stop.progress_status if pickup_stop is not None else None,
+        )
+        validate_current_stop_type(pickup_stop, StopType.PICKUP)
+        if pickup_stop is not None:
+            self._prepare_pickup_stop_for_loading(pickup_stop, current_user.id)
+
+        updated = self._transition(
             current_user,
             order,
             target_status=OrderStatus.LOADING,
             event_type="LOADING_STARTED",
             description="Loading started.",
             ip_address=ip_address,
+            notify_staff_type="LOADING_STARTED",
+            notify_staff_title="Loading started",
+            notify_staff_message=f"Driver started loading for order {order.order_number}.",
         )
+        logger.info(
+            "Workflow start_loading complete order_id=%s response_status=%s",
+            updated.id,
+            updated.status,
+        )
+        return updated
 
     def complete_loading(
         self,
@@ -240,9 +289,17 @@ class OrderWorkflowService:
         ip_address: str | None = None,
     ) -> Order:
         """Complete loading at the current pickup stop."""
+        from app.cmr.service import CmrService
+        from app.config.settings import get_settings
+
         order = self._get_workflow_order(current_user, order_id)
+        CmrService(self._db, get_settings()).ensure_cmr_generated(
+            current_user,
+            order_id,
+        )
+        self._validate_loading_vehicles_ready(order.id, current_user.company_id)
         stops = self._stops.list_for_order(order.id, current_user.company_id)
-        current_stop = get_current_stop(stops)
+        current_stop = get_current_stop(stops, OrderStatus(order.status))
         validate_current_stop_type(current_stop, StopType.PICKUP)
         if current_stop is not None:
             self._advance_stop_progress(
@@ -274,6 +331,109 @@ class OrderWorkflowService:
             notify_staff_message=f"Loading completed for order {order.order_number}.",
             notify_only_when=target_status == OrderStatus.LOADED,
         )
+
+    def reopen_loading(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        reason: str,
+        ip_address: str | None = None,
+    ) -> Order:
+        """Allow a dispatcher to reopen loading so vehicles can be edited again."""
+        if current_user.role not in {UserRole.ADMIN, UserRole.DISPATCHER}:
+            raise AuthorizationError(
+                code="FORBIDDEN",
+                message="Only dispatchers can reopen loading.",
+            )
+
+        order = self._orders.get_by_id_for_company(
+            order_id,
+            current_user.company_id,
+            with_details=False,
+        )
+        if order is None:
+            raise NotFoundError(code="ORDER_NOT_FOUND", message="Order not found.")
+
+        validate_order_in_workflow(order)
+        current_status = OrderStatus(order.status)
+        if current_status != OrderStatus.LOADED:
+            raise ValidationError(
+                code="INVALID_ORDER_STATUS",
+                message="Loading can only be reopened before transit starts.",
+            )
+
+        trimmed_reason = reason.strip()
+
+        stops = get_active_stops(
+            self._stops.list_for_order(order.id, current_user.company_id)
+        )
+        pickup_stop = get_pickup_stop(stops, require_incomplete=False)
+        if pickup_stop is not None:
+            if StopProgressStatus(pickup_stop.progress_status) == StopProgressStatus.COMPLETED:
+                self._stops.update_progress(
+                    pickup_stop,
+                    StopProgressStatus.LOADING,
+                    current_user.id,
+                )
+
+        previous_status = current_status
+        updated_order = self._orders.update_status(
+            order,
+            OrderStatus.LOADING,
+            current_user.id,
+        )
+        description = (
+            f"Loading reopened by dispatcher: {trimmed_reason}"
+            if trimmed_reason
+            else "Loading reopened by dispatcher."
+        )
+        self._timeline.record(
+            current_user,
+            order.id,
+            "LOADING_REOPENED",
+            description,
+        )
+        self._audit.record_loading_reopened(
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+            entity_id=str(order.id),
+            old_value=previous_status.value,
+            new_value=OrderStatus.LOADING.value,
+            reason=trimmed_reason or None,
+            ip_address=ip_address,
+        )
+        self._notifications.notify_staff(
+            company_id=current_user.company_id,
+            roles={UserRole.ADMIN, UserRole.DISPATCHER},
+            title="Loading reopened",
+            message=f"Loading was reopened for order {order.order_number}.",
+            notification_type="LOADING_REOPENED",
+            order_id=order.id,
+        )
+        driver = self._get_assigned_driver(updated_order)
+        if driver is not None:
+            self._notifications.notify_user(
+                company_id=current_user.company_id,
+                user_id=driver.user_id,
+                title="Loading reopened",
+                message=(
+                    f"Dispatcher reopened loading for order {order.order_number}. "
+                    "You can edit vehicles again."
+                ),
+                notification_type="LOADING_REOPENED",
+                order_id=order.id,
+            )
+
+        reloaded = self._reload_order(current_user, updated_order.id)
+        publish_order_event(
+            company_id=current_user.company_id,
+            order_id=reloaded.id,
+            event_type=RealtimeEventType.ORDER_UPDATED,
+            order_number=reloaded.order_number,
+            status=OrderStatus(reloaded.status).value,
+            driver_user_id=driver.user_id if driver is not None else None,
+        )
+        return reloaded
 
     def start_transit(
         self,
@@ -307,7 +467,7 @@ class OrderWorkflowService:
         """Mark arrival at the current delivery stop."""
         order = self._get_workflow_order(current_user, order_id)
         stops = self._stops.list_for_order(order.id, current_user.company_id)
-        current_stop = get_current_stop(stops)
+        current_stop = get_current_stop(stops, OrderStatus(order.status))
         validate_current_stop_type(current_stop, StopType.DELIVERY)
         if current_stop is not None:
             self._advance_stop_progress(
@@ -327,31 +487,138 @@ class OrderWorkflowService:
             notify_staff_message=f"Driver arrived at delivery for order {order.order_number}.",
         )
 
+    def finish_delivery(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> Order:
+        """Finish delivery after signed CMR upload (unloading complete at customer)."""
+        order = self._get_workflow_order(current_user, order_id)
+        order_status = OrderStatus(order.status)
+        if order_status != OrderStatus.ARRIVED_DELIVERY:
+            raise ValidationError(
+                code="INVALID_ORDER_STATUS",
+                message="Finish delivery is only available after signed CMR upload.",
+            )
+
+        stops = get_active_stops(
+            self._stops.list_for_order(order.id, current_user.company_id)
+        )
+        delivery_stop = get_delivery_stop(stops)
+        validate_current_stop_type(delivery_stop, StopType.DELIVERY)
+        if delivery_stop is None:
+            raise ValidationError(
+                code="DELIVERY_STOP_NOT_FOUND",
+                message="No active delivery stop found for this order.",
+            )
+
+        current_progress = StopProgressStatus(delivery_stop.progress_status)
+        if current_progress != StopProgressStatus.DELIVERY_CONFIRMED:
+            raise ValidationError(
+                code="CMR_REQUIRED",
+                message="Upload the signed CMR before finishing delivery.",
+            )
+
+        return self._transition(
+            current_user,
+            order,
+            target_status=OrderStatus.DELIVERING,
+            event_type="DELIVERY_FINISHED",
+            description="Delivery finished.",
+            ip_address=ip_address,
+            notify_staff_type="DELIVERY_FINISHED",
+            notify_staff_title="Delivery finished",
+            notify_staff_message=(
+                f"Driver finished delivery for order {order.order_number}."
+            ),
+        )
+
     def start_delivery(
         self,
         current_user: User,
         order_id: uuid.UUID,
         ip_address: str | None = None,
     ) -> Order:
-        """Start delivery/unloading at the current delivery stop."""
+        """Backward-compatible alias for finish_delivery."""
+        return self.finish_delivery(current_user, order_id, ip_address)
+
+    def confirm_delivery_cmr(
+        self,
+        current_user: User,
+        order_id: uuid.UUID,
+        ip_address: str | None = None,
+    ) -> tuple[Order, OrderStop | None]:
+        """Confirm delivery after signed CMR upload by advancing the delivery stop."""
         order = self._get_workflow_order(current_user, order_id)
-        stops = self._stops.list_for_order(order.id, current_user.company_id)
-        current_stop = get_current_stop(stops)
-        validate_current_stop_type(current_stop, StopType.DELIVERY)
-        if current_stop is not None:
-            self._advance_stop_progress(
-                current_stop,
-                StopProgressStatus.LOADING,
-                current_user.id,
+        order_status = OrderStatus(order.status)
+        if order_status != OrderStatus.ARRIVED_DELIVERY:
+            raise ValidationError(
+                code="INVALID_ORDER_STATUS",
+                message="Signed CMR can only be uploaded after arriving at delivery.",
             )
-        return self._transition(
-            current_user,
-            order,
-            target_status=OrderStatus.DELIVERING,
-            event_type="DELIVERY_STARTED",
-            description="Delivery started.",
-            ip_address=ip_address,
+
+        if not self._documents.has_signed_cmr_upload(order_id, current_user.company_id):
+            raise ValidationError(
+                code="CMR_REQUIRED",
+                message="Upload the physically signed or stamped CMR copy.",
+            )
+
+        stops = get_active_stops(
+            self._stops.list_for_order(order.id, current_user.company_id)
         )
+        delivery_stop = get_delivery_stop(stops)
+        validate_current_stop_type(delivery_stop, StopType.DELIVERY)
+        if delivery_stop is None:
+            raise ValidationError(
+                code="DELIVERY_STOP_NOT_FOUND",
+                message="No active delivery stop found for this order.",
+            )
+
+        current_progress = StopProgressStatus(delivery_stop.progress_status)
+        updated_stop: OrderStop | None = delivery_stop
+        logger.info(
+            "Workflow confirm_delivery_cmr order_id=%s order_status=%s stop_progress=%s",
+            order.id,
+            order_status.value,
+            current_progress.value,
+        )
+
+        if current_progress == StopProgressStatus.DELIVERY_CONFIRMED:
+            reloaded = self._reload_order(current_user, order.id)
+            return reloaded, updated_stop
+
+        if current_progress != StopProgressStatus.ARRIVED:
+            raise ValidationError(
+                code="INVALID_STOP_PROGRESS",
+                message=(
+                    "Delivery stop must be arrived before CMR can be confirmed. "
+                    f"Current progress is {current_progress.value}."
+                ),
+            )
+
+        updated_stop = self._advance_stop_progress(
+            delivery_stop,
+            StopProgressStatus.DELIVERY_CONFIRMED,
+            current_user.id,
+        )
+        self._timeline.record(
+            current_user,
+            order.id,
+            "DELIVERY_CMR_CONFIRMED",
+            "Signed CMR uploaded and delivery confirmed.",
+        )
+        reloaded = self._reload_order(current_user, order.id)
+        driver = self._get_assigned_driver(reloaded)
+        publish_order_event(
+            company_id=current_user.company_id,
+            order_id=reloaded.id,
+            event_type=RealtimeEventType.ORDER_UPDATED,
+            order_number=reloaded.order_number,
+            status=OrderStatus(reloaded.status).value,
+            driver_user_id=driver.user_id if driver is not None else None,
+        )
+        return reloaded, updated_stop
 
     def complete_delivery(
         self,
@@ -359,14 +626,41 @@ class OrderWorkflowService:
         order_id: uuid.UUID,
         ip_address: str | None = None,
     ) -> Order:
-        """Complete delivery at the current delivery stop."""
+        """Complete the job after delivery is finished and signed CMR is attached."""
         order = self._get_workflow_order(current_user, order_id)
-        stops = self._stops.list_for_order(order.id, current_user.company_id)
-        current_stop = get_current_stop(stops)
-        validate_current_stop_type(current_stop, StopType.DELIVERY)
-        if current_stop is not None:
+        order_status = OrderStatus(order.status)
+        if order_status != OrderStatus.DELIVERING:
+            raise ValidationError(
+                code="INVALID_ORDER_STATUS",
+                message="Finish delivery before completing the job.",
+            )
+
+        if not self._documents.has_signed_cmr_upload(order_id, current_user.company_id):
+            raise ValidationError(
+                code="CMR_REQUIRED",
+                message="Upload the signed CMR before completing the job.",
+            )
+
+        stops = get_active_stops(
+            self._stops.list_for_order(order.id, current_user.company_id)
+        )
+        delivery_stop = get_delivery_stop(stops)
+        validate_current_stop_type(delivery_stop, StopType.DELIVERY)
+        if delivery_stop is not None:
+            current_progress = StopProgressStatus(delivery_stop.progress_status)
+            logger.info(
+                "Workflow complete_delivery order_id=%s order_status=%s stop_progress=%s",
+                order.id,
+                order.status,
+                current_progress.value,
+            )
+            if current_progress != StopProgressStatus.DELIVERY_CONFIRMED:
+                raise ValidationError(
+                    code="CMR_REQUIRED",
+                    message="Upload the signed CMR before completing the job.",
+                )
             self._advance_stop_progress(
-                current_stop,
+                delivery_stop,
                 StopProgressStatus.COMPLETED,
                 current_user.id,
             )
@@ -377,13 +671,6 @@ class OrderWorkflowService:
             if all_deliveries_completed(stops)
             else OrderStatus.IN_TRANSIT
         )
-        if target_status == OrderStatus.COMPLETED:
-            from app.completion_checklist.service import CompletionChecklistService
-
-            CompletionChecklistService(self._db).enforce_completion_ready(
-                current_user,
-                order_id,
-            )
         description = (
             "Order completed."
             if target_status == OrderStatus.COMPLETED
@@ -402,6 +689,28 @@ class OrderWorkflowService:
             notify_only_when=target_status == OrderStatus.COMPLETED,
         )
         return updated
+
+    def _validate_loading_vehicles_ready(
+        self,
+        order_id: uuid.UUID,
+        company_id: uuid.UUID,
+    ) -> None:
+        """Ensure every vehicle is registered and VIN-verified before loading completes."""
+        vehicles = self._vehicles.list_for_order(order_id, company_id)
+        if not vehicles:
+            raise ValidationError(
+                code="NO_VEHICLES",
+                message="Add at least one vehicle before finishing loading.",
+            )
+        pending = [vehicle for vehicle in vehicles if not vehicle.verified_vin]
+        if pending:
+            raise ValidationError(
+                code="VINS_NOT_VERIFIED",
+                message=(
+                    f"{len(pending)} vehicle(s) still need VIN verification "
+                    "before loading can be completed."
+                ),
+            )
 
     def _get_workflow_order(self, current_user: User, order_id: uuid.UUID) -> Order:
         order = self._orders.get_by_id_for_company(
@@ -430,8 +739,40 @@ class OrderWorkflowService:
         target_status: StopProgressStatus,
         updated_by: uuid.UUID,
     ) -> OrderStop:
+        current = StopProgressStatus(stop.progress_status)
+        logger.info(
+            "Workflow stop progress order_id=%s stop_id=%s %s -> %s",
+            stop.order_id,
+            stop.id,
+            current.value,
+            target_status.value,
+        )
         validate_stop_progress_transition(stop, target_status)
-        return self._stops.update_progress(stop, target_status, updated_by)
+        updated = self._stops.update_progress(stop, target_status, updated_by)
+        logger.info(
+            "Workflow stop progress committed order_id=%s stop_id=%s progress=%s",
+            stop.order_id,
+            updated.id,
+            updated.progress_status,
+        )
+        return updated
+
+    def _prepare_pickup_stop_for_loading(
+        self,
+        stop: OrderStop,
+        updated_by: uuid.UUID,
+    ) -> None:
+        """Ensure pickup stop progress is ready before order enters LOADING."""
+        current = StopProgressStatus(stop.progress_status)
+        if current == StopProgressStatus.PENDING:
+            logger.warning(
+                "Pickup stop still pending at start_loading; auto-marking arrived order_id=%s stop_id=%s",
+                stop.order_id,
+                stop.id,
+            )
+            stop = self._advance_stop_progress(stop, StopProgressStatus.ARRIVED, updated_by)
+        if StopProgressStatus(stop.progress_status) == StopProgressStatus.ARRIVED:
+            self._advance_stop_progress(stop, StopProgressStatus.LOADING, updated_by)
 
     def _transition(
         self,
@@ -449,7 +790,22 @@ class OrderWorkflowService:
     ) -> Order:
         previous_status = OrderStatus(order.status)
         validate_status_transition(order, target_status)
+        ensure_driver_forward_transition(current_user, previous_status, target_status)
+        logger.info(
+            "Workflow transition order_id=%s order_number=%s %s -> %s event=%s user_id=%s",
+            order.id,
+            order.order_number,
+            previous_status.value,
+            target_status.value,
+            event_type,
+            current_user.id,
+        )
         updated_order = self._orders.update_status(order, target_status, current_user.id)
+        logger.info(
+            "Workflow transition committed order_id=%s persisted_status=%s",
+            updated_order.id,
+            updated_order.status,
+        )
         self._record_workflow_event(
             current_user,
             order.id,
@@ -471,6 +827,7 @@ class OrderWorkflowService:
                 title=notify_staff_title,
                 message=notify_staff_message,
                 notification_type=notify_staff_type,
+                order_id=order.id,
             )
         reloaded = self._reload_order(current_user, updated_order.id)
         driver = self._get_assigned_driver(reloaded)

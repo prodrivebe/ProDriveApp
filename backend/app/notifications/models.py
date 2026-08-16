@@ -33,6 +33,12 @@ class Notification(Base, UUIDPrimaryKeyMixin):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    order_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("orders.id"),
+        nullable=True,
+        index=True,
+    )
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

@@ -146,6 +146,36 @@ def _fulfill_checklist(
     assert document.status_code == 201
 
 
+def _verify_order_vehicles(
+    client: TestClient,
+    headers: dict[str, str],
+    order_id: str,
+) -> None:
+    order = client.get(f"/api/v1/orders/{order_id}", headers=headers)
+    assert order.status_code == 200
+    for vehicle in order.json()["data"]["vehicles"]:
+        verify = client.post(
+            f"/api/v1/orders/{order_id}/vehicles/{vehicle["id"]}/verify-vin",
+            headers=headers,
+            json={"vin": vehicle.get("vin") or VALID_VIN},
+        )
+        assert verify.status_code == 200
+
+
+def _upload_signed_cmr(
+    client: TestClient,
+    headers: dict[str, str],
+    order_id: str,
+) -> None:
+    response = client.post(
+        f"/api/v1/orders/{order_id}/documents",
+        headers=headers,
+        files={"file": ("signed-cmr.png", io.BytesIO(MINIMAL_PNG), "image/png")},
+        data={"document_type": "CMR"},
+    )
+    assert response.status_code == 201, response.text
+
+
 def _advance_to_delivery_ready(
     client: TestClient,
     driver_headers: dict[str, str],
@@ -158,8 +188,14 @@ def _advance_to_delivery_ready(
         "complete-loading",
         "start-transit",
         "arrive-delivery",
-        "start-delivery",
     ):
+        if step == "complete-loading":
+            _verify_order_vehicles(client, driver_headers, order_id)
+            generate = client.post(
+                f"/api/v1/orders/{order_id}/cmr/generate",
+                headers=driver_headers,
+            )
+            assert generate.status_code == 200, generate.text
         response = client.post(
             f"/api/v1/orders/{order_id}/{step}",
             headers=driver_headers,
@@ -223,7 +259,7 @@ def test_invalid_vin_is_rejected(
     response = client.post(
         f"/api/v1/orders/{order_id}/vehicles/{vehicle_id}/verify-vin",
         headers=driver_headers,
-        json={"vin": "INVALID-VIN"},
+        json={"vin": "IIIIIIIIIIIIIIIII"},
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_VIN"
@@ -339,34 +375,34 @@ def test_cmr_document_versioning(
 ) -> None:
     """Uploading CMR creates new versions without deleting previous ones."""
     admin_headers = _auth(admin_tokens["access_token"])
-    order_id, _ = _create_assigned_order(
-        client,
-        admin_headers,
-        _create_driver(client, admin_headers, "cmr.version@example.com")[0],
+    driver_id, driver_headers = _create_driver(
+        client, admin_headers, "cmr.version@example.com"
     )
+    order_id, _ = _create_assigned_order(client, admin_headers, driver_id)
+    _advance_to_delivery_ready(client, driver_headers, order_id)
 
     first = client.post(
         f"/api/v1/orders/{order_id}/documents",
-        headers=admin_headers,
+        headers=driver_headers,
         files={"file": ("cmr-v1.png", io.BytesIO(MINIMAL_PNG), "image/png")},
         data={"document_type": "CMR"},
     )
     assert first.status_code == 201
-    assert first.json()["data"]["version"] == 1
+    assert first.json()["data"]["document"]["version"] == 2
 
     second = client.post(
         f"/api/v1/orders/{order_id}/documents",
-        headers=admin_headers,
+        headers=driver_headers,
         files={"file": ("cmr-v2.png", io.BytesIO(MINIMAL_PNG), "image/png")},
         data={"document_type": "CMR"},
     )
     assert second.status_code == 201
-    assert second.json()["data"]["version"] == 2
+    assert second.json()["data"]["document"]["version"] == 3
 
-    listed = client.get(f"/api/v1/orders/{order_id}/documents", headers=admin_headers)
+    listed = client.get(f"/api/v1/orders/{order_id}/documents", headers=driver_headers)
     assert listed.status_code == 200
     versions = sorted(item["version"] for item in listed.json()["data"])
-    assert versions == [1, 2]
+    assert versions == [1, 2, 3]
 
 
 def test_completion_checklist_and_enforced_order_completion(
@@ -389,16 +425,11 @@ def test_completion_checklist_and_enforced_order_completion(
     )
     assert checklist.status_code == 200
     assert checklist.json()["data"]["can_complete"] is False
-    assert "vins_verified" in checklist.json()["data"]["missing_items"]
+    assert "photos_uploaded" in checklist.json()["data"]["missing_items"]
+    assert checklist.json()["data"]["vins_verified"] is True
 
-    blocked = client.post(
-        f"/api/v1/orders/{order_id}/complete-delivery",
-        headers=driver_headers,
-    )
-    assert blocked.status_code == 422
-    assert blocked.json()["error"]["code"] == "CHECKLIST_INCOMPLETE"
-
-    _fulfill_checklist(client, driver_headers, order_id, vehicle_id)
+    _upload_required_photos(client, driver_headers, order_id, vehicle_id)
+    _upload_signed_cmr(client, driver_headers, order_id)
 
     validated = client.post(
         f"/api/v1/orders/{order_id}/validate-completion",
@@ -409,6 +440,12 @@ def test_completion_checklist_and_enforced_order_completion(
     assert "vins_verified" in validation_data["completed_items"]
     assert "documents_uploaded" in validation_data["completed_items"]
     assert validation_data["delivery_completed"] is False
+
+    finished = client.post(
+        f"/api/v1/orders/{order_id}/finish-delivery",
+        headers=driver_headers,
+    )
+    assert finished.status_code == 200, finished.text
 
     completed = client.post(
         f"/api/v1/orders/{order_id}/complete-delivery",

@@ -1,8 +1,8 @@
 import { apiGet, apiPost, clearTokens, setTokens } from "./apiClient";
 import type { TokenResponse, UserProfile } from "../types/api";
 
-export async function login(email: string, password: string): Promise<UserProfile> {
-  const tokens = await apiPost<TokenResponse>("/auth/login", { email, password });
+export async function login(username: string, password: string): Promise<UserProfile> {
+  const tokens = await apiPost<TokenResponse>("/auth/login", { username, password });
   setTokens(tokens.access_token, tokens.refresh_token);
   const profile = await apiGet<UserProfile>("/auth/me");
   if (profile.role === "DRIVER") {

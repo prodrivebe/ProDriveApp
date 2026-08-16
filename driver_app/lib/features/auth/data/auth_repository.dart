@@ -9,11 +9,11 @@ class AuthRepository {
   final Dio _dio;
   final SecureTokenStorage _storage;
 
-  Future<StoredTokens> login(String email, String password) async {
+  Future<StoredTokens> login(String username, String password) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/auth/login',
-        data: {'email': email, 'password': password},
+        data: {'username': username, 'password': password},
       );
       final data = responseDataMap(response);
       final tokens = StoredTokens(

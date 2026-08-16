@@ -69,7 +69,7 @@ class Settings(BaseSettings):
         alias="SEED_ADMIN_PASSWORD",
     )
     seed_company_name: str = Field(
-        default="ProDrive Demo Transport",
+        default="Bruxelles Auto Transport NV",
         alias="SEED_COMPANY_NAME",
     )
     upload_root_dir: str = Field(default="uploads", alias="UPLOAD_ROOT_DIR")
@@ -77,7 +77,11 @@ class Settings(BaseSettings):
     max_photo_size_mb: int = Field(default=10, alias="MAX_PHOTO_SIZE_MB")
     max_document_size_mb: int = Field(default=15, alias="MAX_DOCUMENT_SIZE_MB")
     cors_origins: str = Field(
-        default="http://localhost:5173,http://127.0.0.1:5173",
+        default=(
+            "http://localhost:3000,http://localhost:5173,"
+            "http://127.0.0.1:3000,http://127.0.0.1:5173,"
+            "https://prodriveservice.eu,https://www.prodriveservice.eu"
+        ),
         alias="CORS_ORIGINS",
     )
     public_domain: str = Field(default="", alias="PUBLIC_DOMAIN")

@@ -74,6 +74,20 @@ class DriverService:
         ensure_same_company(driver.company_id, current_user)
         return driver
 
+    def to_response(self, driver: Driver) -> DriverResponse:
+        """Build a driver response enriched with linked user profile fields."""
+        response = DriverResponse.model_validate(driver)
+        user = self._users.get_by_id(driver.user_id)
+        if user is None:
+            return response
+        return response.model_copy(
+            update={
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": str(user.email),
+            }
+        )
+
     def create_driver(
         self,
         current_user: User,

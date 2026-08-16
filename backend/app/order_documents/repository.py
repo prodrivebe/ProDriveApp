@@ -60,6 +60,53 @@ class OrderDocumentRepository:
         )
         return int(latest or 0)
 
+    def has_signed_cmr_upload(
+        self,
+        order_id: uuid.UUID,
+        company_id: uuid.UUID,
+    ) -> bool:
+        """Return whether a signed CMR copy (v2+) exists after pickup draft generation."""
+        return (
+            self.get_latest_version(order_id, company_id, OrderDocumentType.CMR) >= 2
+        )
+
+    def has_document(
+        self,
+        order_id: uuid.UUID,
+        company_id: uuid.UUID,
+        document_type: OrderDocumentType,
+    ) -> bool:
+        count = self._db.scalar(
+            select(func.count())
+            .select_from(OrderDocument)
+            .where(
+                OrderDocument.order_id == order_id,
+                OrderDocument.company_id == company_id,
+                OrderDocument.document_type == document_type,
+                OrderDocument.deleted_at.is_(None),
+            )
+        )
+        return int(count or 0) > 0
+
+    def has_locked_document(
+        self,
+        order_id: uuid.UUID,
+        company_id: uuid.UUID,
+        document_type: OrderDocumentType,
+    ) -> bool:
+        locked = self._db.scalar(
+            select(func.count())
+            .select_from(OrderDocument)
+            .where(
+                OrderDocument.order_id == order_id,
+                OrderDocument.company_id == company_id,
+                OrderDocument.document_type == document_type,
+                OrderDocument.is_locked.is_(True),
+                OrderDocument.deleted_at.is_(None),
+            )
+        )
+        return int(locked or 0) > 0
+
     def create(
         self,
         *,
@@ -70,6 +117,7 @@ class OrderDocumentRepository:
         file_name: str,
         version: int,
         uploaded_by: uuid.UUID,
+        is_locked: bool = False,
     ) -> OrderDocument:
         document = OrderDocument(
             company_id=company_id,
@@ -78,6 +126,7 @@ class OrderDocumentRepository:
             file_path=file_path,
             file_name=file_name,
             version=version,
+            is_locked=is_locked,
             uploaded_by=uploaded_by,
             uploaded_at=datetime.now(tz=UTC),
         )
@@ -85,6 +134,30 @@ class OrderDocumentRepository:
         self._db.commit()
         self._db.refresh(document)
         return document
+
+    def get_latest_document(
+        self,
+        order_id: uuid.UUID,
+        company_id: uuid.UUID,
+        document_type: OrderDocumentType,
+        *,
+        locked_only: bool = False,
+    ) -> OrderDocument | None:
+        filters = [
+            OrderDocument.order_id == order_id,
+            OrderDocument.company_id == company_id,
+            OrderDocument.document_type == document_type,
+            OrderDocument.deleted_at.is_(None),
+        ]
+        if locked_only:
+            filters.append(OrderDocument.is_locked.is_(True))
+        statement = (
+            select(OrderDocument)
+            .where(*filters)
+            .order_by(OrderDocument.version.desc())
+            .limit(1)
+        )
+        return self._db.scalar(statement)
 
     def soft_delete(self, document: OrderDocument) -> OrderDocument:
         document.deleted_at = datetime.now(tz=UTC)

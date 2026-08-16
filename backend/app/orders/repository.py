@@ -105,6 +105,7 @@ class OrderRepository:
             status=OrderStatus.DRAFT,
             planned_pickup_date=payload.planned_pickup_date,
             planned_delivery_date=payload.planned_delivery_date,
+            customer_reference_numbers=list(payload.customer_reference_numbers),
             notes=payload.notes,
             created_by=created_by,
             updated_by=created_by,
@@ -124,6 +125,8 @@ class OrderRepository:
         order.customer_id = payload.customer_id
         order.planned_pickup_date = payload.planned_pickup_date
         order.planned_delivery_date = payload.planned_delivery_date
+        if payload.customer_reference_numbers is not None:
+            order.customer_reference_numbers = list(payload.customer_reference_numbers)
         order.notes = payload.notes
         if payload.status is not None:
             order.status = payload.status
@@ -158,6 +161,25 @@ class OrderRepository:
                 order.assigned_truck_id = assigned_truck_id
             if assigned_trailer_id is not None:
                 order.assigned_trailer_id = assigned_trailer_id
+        self._db.add(order)
+        self._db.commit()
+        self._db.refresh(order)
+        return order
+
+    def update_assignment(
+        self,
+        order: Order,
+        updated_by: uuid.UUID,
+        *,
+        assigned_driver_id: uuid.UUID,
+        assigned_truck_id: uuid.UUID | None,
+        assigned_trailer_id: uuid.UUID | None,
+    ) -> Order:
+        """Update fleet assignment fields without changing order status."""
+        order.assigned_driver_id = assigned_driver_id
+        order.assigned_truck_id = assigned_truck_id
+        order.assigned_trailer_id = assigned_trailer_id
+        order.updated_by = updated_by
         self._db.add(order)
         self._db.commit()
         self._db.refresh(order)
