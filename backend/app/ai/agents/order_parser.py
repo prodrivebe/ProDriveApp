@@ -190,15 +190,34 @@ VEHICLE_PREFIXES = {
     "mg",
 }
 TABULAR_HEADER_PATTERN = re.compile(
-    r"(?i)\b(location|locatie|pickup|stock[_\s-]?id|vin|model|make|merk)\b"
+    r"(?i)\b(location|locatie|pickup|stock[_\s-]?id|vin|model|make|merk|license|ll[_\s-]?id|autohero)\b"
 )
 TABULAR_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "location": ("location", "locatie", "pickup", "pick up", "pick-up", "ophalen", "laden"),
-    "stock_id": ("stock_id", "stock id", "stockid", "stock", "ref", "reference"),
+    "stock_id": ("stock_id", "stock id", "stockid", "stock"),
     "vin": ("vin", "chassis", "chassisnummer"),
     "model": ("model", "type", "vehicle"),
     "make": ("make", "merk", "brand", "fabrikant"),
+    "license_plate": ("license_plate", "license plate", "plate", "license", "nummerplaat"),
+    "autohero_car": ("autohero car", "autohero_car", "autohero"),
+    "ll_id": ("ll_id", "ll id", "llid"),
 }
+
+
+@dataclass
+class ParsedImportRow:
+    """Single parsed tabular import row with validation feedback."""
+
+    row_index: int
+    location: str | None = None
+    stock_id: str | None = None
+    vin: str | None = None
+    model: str | None = None
+    license_plate: str | None = None
+    autohero_car: str | None = None
+    ll_id: str | None = None
+    validation_errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -207,6 +226,7 @@ class TabularVehicleParse:
 
     vehicles: list[OrderVehicleCreateRequest] = field(default_factory=list)
     pickup_location: str | None = None
+    parsed_rows: list[ParsedImportRow] = field(default_factory=list)
 
 
 @dataclass
@@ -246,6 +266,7 @@ class OrderParserResult:
     reference_numbers: list[str] = field(default_factory=list)
     notes: str | None = None
     missing_fields: list[str] = field(default_factory=list)
+    parsed_rows: list[ParsedImportRow] = field(default_factory=list)
     field_confidence: dict[str, float] = field(default_factory=dict)
     overall_confidence: float = 0.0
 
@@ -264,6 +285,21 @@ class OrderParserResult:
             "reference_numbers": self.reference_numbers,
             "notes": self.notes,
             "missing_fields": self.missing_fields,
+            "parsed_rows": [
+                {
+                    "row_index": row.row_index,
+                    "location": row.location,
+                    "stock_id": row.stock_id,
+                    "vin": row.vin,
+                    "model": row.model,
+                    "license_plate": row.license_plate,
+                    "autohero_car": row.autohero_car,
+                    "ll_id": row.ll_id,
+                    "validation_errors": row.validation_errors,
+                    "warnings": row.warnings,
+                }
+                for row in self.parsed_rows
+            ],
             "field_confidence": self.field_confidence,
             "overall_confidence": self.overall_confidence,
         }
@@ -366,6 +402,7 @@ class OrderParserAgent:
             result.field_confidence["autohero_stock"] = round(0.88 + 0.1 * completeness, 2)
         elif tabular.vehicles:
             result.vehicles = tabular.vehicles
+            result.parsed_rows = tabular.parsed_rows
             if tabular.pickup_location:
                 city = tabular.pickup_location.strip()
                 has_pickup_city = any(
@@ -712,8 +749,9 @@ class OrderParserAgent:
         vehicles: list[OrderVehicleCreateRequest] = []
         seen_vins: set[str] = set()
         pickup_location: str | None = None
+        parsed_rows: list[ParsedImportRow] = []
 
-        for line in lines[header_index + 1 :]:
+        for row_offset, line in enumerate(lines[header_index + 1 :], start=1):
             if self._is_noise_line(line) or DELIVERY_SECTION_START.match(line):
                 break
             if TABULAR_HEADER_PATTERN.fullmatch(line.replace("_", " ")):
@@ -721,32 +759,67 @@ class OrderParserAgent:
 
             columns = self._split_tabular_columns(line)
             vin = self._vin_from_tabular_row(line, columns, column_map)
+            location = self._tabular_cell(columns, column_map, "location")
+            stock_id = self._tabular_cell(columns, column_map, "stock_id")
+            model = self._tabular_cell(columns, column_map, "model")
+            license_plate = self._tabular_cell(columns, column_map, "license_plate")
+            autohero_car = self._tabular_cell(columns, column_map, "autohero_car")
+            ll_id = self._tabular_cell(columns, column_map, "ll_id")
+
+            parsed_row = ParsedImportRow(
+                row_index=row_offset,
+                location=location,
+                stock_id=stock_id,
+                vin=vin,
+                model=model,
+                license_plate=license_plate,
+                autohero_car=autohero_car,
+                ll_id=ll_id,
+            )
             if not vin:
+                parsed_row.validation_errors.append("Missing or invalid VIN")
+                parsed_rows.append(parsed_row)
                 continue
             if vin in seen_vins:
+                parsed_row.warnings.append("Duplicate VIN skipped")
+                parsed_rows.append(parsed_row)
                 continue
             seen_vins.add(vin)
 
             make = self._tabular_cell(columns, column_map, "make")
-            model = self._tabular_cell(columns, column_map, "model")
-            location = self._tabular_cell(columns, column_map, "location")
             if location and not pickup_location:
                 pickup_location = location
 
             if model and not make:
                 make, model = self._split_make_model(model)
 
+            note_parts: list[str] = []
+            if stock_id:
+                note_parts.append(f"Stock ID: {stock_id}")
+            if license_plate:
+                note_parts.append(f"License plate: {license_plate}")
+            if autohero_car:
+                note_parts.append(f"Autohero car: {autohero_car}")
+            if ll_id:
+                note_parts.append(f"LL ID: {ll_id}")
+
             vehicles.append(
                 OrderVehicleCreateRequest(
                     vin=vin,
                     make=make,
                     model=model,
+                    notes="; ".join(note_parts) if note_parts else None,
                 )
             )
+            parsed_rows.append(parsed_row)
             if len(vehicles) >= MAX_ORDER_VEHICLES:
                 break
 
-        return TabularVehicleParse(vehicles=vehicles, pickup_location=pickup_location)
+        return TabularVehicleParse(
+            vehicles=vehicles,
+            pickup_location=pickup_location,
+            parsed_rows=parsed_rows,
+        )
 
     def _parse_autohero_stock_rows(self, full_message: str) -> AutoheroStockParse:
         """Parse Autohero stock-list rows: City StockID VIN Make Model Plate Ref."""

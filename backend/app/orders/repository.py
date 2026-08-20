@@ -88,6 +88,45 @@ class OrderRepository:
             or 0
         )
 
+    def count_for_customer(self, company_id: uuid.UUID, customer_id: uuid.UUID) -> int:
+        """Return the number of orders linked to a customer."""
+        return int(
+            self._db.scalar(
+                select(func.count())
+                .select_from(Order)
+                .where(
+                    Order.company_id == company_id,
+                    Order.customer_id == customer_id,
+                    Order.deleted_at.is_(None),
+                )
+            )
+            or 0
+        )
+
+    def count_active_for_driver(
+        self,
+        company_id: uuid.UUID,
+        driver_id: uuid.UUID,
+        statuses: set[OrderStatus],
+    ) -> int:
+        """Return active order count assigned to a driver."""
+        if not statuses:
+            return 0
+        status_values = [status.value for status in statuses]
+        return int(
+            self._db.scalar(
+                select(func.count())
+                .select_from(Order)
+                .where(
+                    Order.company_id == company_id,
+                    Order.assigned_driver_id == driver_id,
+                    Order.status.in_(status_values),
+                    Order.deleted_at.is_(None),
+                )
+            )
+            or 0
+        )
+
     def create(
         self,
         *,

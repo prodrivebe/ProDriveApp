@@ -17,7 +17,7 @@ def _create_customer(client: TestClient, headers: dict[str, str]) -> str:
         headers=headers,
         json={"company_name": "AI Test Customer", "email": "ai-customer@example.com"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     return response.json()["data"]["id"]
 
 

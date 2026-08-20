@@ -22,14 +22,20 @@ def init_engine(settings: Settings) -> Engine:
     """Create the SQLAlchemy engine and session factory."""
     global _engine, SessionLocal
 
-    _engine = create_engine(
-        settings.database_url,
-        pool_pre_ping=True,
-        pool_size=DEFAULT_POOL_SIZE,
-        max_overflow=DEFAULT_MAX_OVERFLOW,
-        pool_timeout=DEFAULT_POOL_TIMEOUT_SECONDS,
-        pool_recycle=DEFAULT_POOL_RECYCLE_SECONDS,
-    )
+    engine_kwargs: dict[str, object] = {"pool_pre_ping": True}
+    if settings.database_url.startswith("sqlite"):
+        engine_kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        engine_kwargs.update(
+            {
+                "pool_size": DEFAULT_POOL_SIZE,
+                "max_overflow": DEFAULT_MAX_OVERFLOW,
+                "pool_timeout": DEFAULT_POOL_TIMEOUT_SECONDS,
+                "pool_recycle": DEFAULT_POOL_RECYCLE_SECONDS,
+            }
+        )
+
+    _engine = create_engine(settings.database_url, **engine_kwargs)
     SessionLocal = sessionmaker(
         bind=_engine,
         autocommit=False,

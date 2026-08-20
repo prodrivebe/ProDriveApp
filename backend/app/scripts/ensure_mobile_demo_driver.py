@@ -47,8 +47,9 @@ def _normalize_order_stop_sequences(db, order_id) -> None:
 
 def ensure_mobile_demo_driver(*, company_id=None) -> dict[str, object]:
     """Create or refresh the mobile demo driver and guarantee one active order."""
-    settings = get_settings()
-    init_engine(settings)
+    if db_session_module.SessionLocal is None:
+        settings = get_settings()
+        init_engine(settings)
     if db_session_module.SessionLocal is None:
         msg = "Database session factory has not been initialized."
         raise RuntimeError(msg)

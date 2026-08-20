@@ -14,7 +14,12 @@ from app.order_documents.models import OrderDocument
 from app.orders.models import Order, OrderStop, OrderTimelineEntry, OrderVehicle
 from app.photos.models import VehiclePhoto
 from app.trailers.models import Trailer
-from app.trucks.models import Truck
+from app.trucks.models import (
+    Truck,
+    TruckInspectionRecord,
+    TruckMaintenanceRecord,
+    TruckTireRecord,
+)
 from app.users.models import User
 from app.vehicle_damage.models import VehicleDamage, VehicleDamagePhoto
 from app.planning.models.loading_plan import LoadingPlan, LoadingPosition
@@ -44,6 +49,9 @@ __all__ = [
     "RefreshToken",
     "Trailer",
     "Truck",
+    "TruckInspectionRecord",
+    "TruckMaintenanceRecord",
+    "TruckTireRecord",
     "User",
     "VehicleDamage",
     "VehicleDamagePhoto",

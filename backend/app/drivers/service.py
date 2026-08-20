@@ -24,6 +24,8 @@ from app.trailers.repository import TrailerRepository
 from app.trucks.repository import TruckRepository
 from app.users.models import User
 from app.users.repository import UserRepository
+from app.users.schemas import UserCreateRequest
+from app.users.service import UserService
 
 from app.workflow.schemas import DriverCurrentOrderResponse
 from app.workflow.service import OrderWorkflowService
@@ -39,6 +41,7 @@ class DriverService:
         self._db = db
         self._repository = DriverRepository(db)
         self._users = UserRepository(db)
+        self._user_service = UserService(db)
         self._orders = OrderRepository(db)
         self._trucks = TruckRepository(db)
         self._trailers = TrailerRepository(db)
@@ -74,17 +77,33 @@ class DriverService:
         ensure_same_company(driver.company_id, current_user)
         return driver
 
+    @staticmethod
+    def build_display_name(driver: Driver, user: User | None) -> str:
+        """Return a human-readable driver label for API consumers."""
+        if user is not None:
+            name = f"{user.first_name} {user.last_name}".strip()
+            if name:
+                return name
+            email = str(user.email).strip()
+            if email:
+                return email
+        if driver.phone:
+            return driver.phone
+        return "Unknown driver"
+
     def to_response(self, driver: Driver) -> DriverResponse:
         """Build a driver response enriched with linked user profile fields."""
         response = DriverResponse.model_validate(driver)
         user = self._users.get_by_id(driver.user_id)
+        display_name = self.build_display_name(driver, user)
         if user is None:
-            return response
+            return response.model_copy(update={"display_name": display_name})
         return response.model_copy(
             update={
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "email": str(user.email),
+                "display_name": display_name,
             }
         )
 
@@ -95,16 +114,36 @@ class DriverService:
         ip_address: str | None,
     ) -> Driver:
         """Create a driver profile for a user."""
-        user = self._users.get_by_id_for_company(payload.user_id, current_user.company_id)
-        if user is None:
-            raise ValidationError(
-                code="INVALID_DRIVER_USER",
-                message="User not found in this company.",
+        user_id = payload.user_id
+        if user_id is None:
+            assert payload.first_name is not None
+            assert payload.last_name is not None
+            assert payload.email is not None
+            assert payload.password is not None
+            created_user = self._user_service.create_user(
+                current_user,
+                UserCreateRequest(
+                    first_name=payload.first_name,
+                    last_name=payload.last_name,
+                    email=payload.email,
+                    password=payload.password,
+                    role=UserRole.DRIVER,
+                    is_active=True,
+                ),
+                ip_address,
             )
-        validate_driver_user(user, current_user.company_id)
+            user_id = created_user.id
+        else:
+            user = self._users.get_by_id_for_company(user_id, current_user.company_id)
+            if user is None:
+                raise ValidationError(
+                    code="INVALID_DRIVER_USER",
+                    message="User not found in this company.",
+                )
+            validate_driver_user(user, current_user.company_id)
 
         existing_driver = self._repository.get_by_user_for_company(
-            payload.user_id,
+            user_id,
             current_user.company_id,
         )
         if existing_driver is not None:
@@ -113,9 +152,10 @@ class DriverService:
                 message="This user already has a driver profile.",
             )
 
+        create_payload = payload.model_copy(update={"user_id": user_id})
         driver = self._repository.create(
             company_id=current_user.company_id,
-            payload=payload,
+            payload=create_payload,
             created_by=current_user.id,
         )
         self._audit_service.record_driver_created(
@@ -135,6 +175,18 @@ class DriverService:
     ) -> Driver:
         """Update a driver profile."""
         driver = self.get_driver(current_user, driver_id)
+        linked_user = self._users.get_by_id(driver.user_id)
+        if linked_user is not None and any(
+            value is not None
+            for value in (payload.first_name, payload.last_name, payload.email)
+        ):
+            self._users.update_profile_fields(
+                linked_user,
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+                email=str(payload.email) if payload.email is not None else None,
+                updated_by=current_user.id,
+            )
         updated = self._repository.update(driver, payload, current_user.id)
         self._audit_service.record_driver_updated(
             company_id=current_user.company_id,
@@ -152,6 +204,16 @@ class DriverService:
     ) -> None:
         """Soft delete a driver profile."""
         driver = self.get_driver(current_user, driver_id)
+        active_orders = self._orders.count_active_for_driver(
+            current_user.company_id,
+            driver_id,
+            ACTIVE_WORKFLOW_STATUSES,
+        )
+        if active_orders > 0:
+            raise ValidationError(
+                code="DRIVER_HAS_ACTIVE_ORDERS",
+                message="Cannot delete a driver with active assigned orders.",
+            )
         self._repository.soft_delete(driver, current_user.id)
         self._audit_service.record_driver_deleted(
             company_id=current_user.company_id,
@@ -275,7 +337,7 @@ class DriverService:
 
         unread = self._notifications.count_unread(current_user)
         return DriverHomeResponse(
-            driver=DriverResponse.model_validate(driver),
+            driver=self.to_response(driver),
             user_name=user_name,
             truck_label=truck_label,
             trailer_label=trailer_label,

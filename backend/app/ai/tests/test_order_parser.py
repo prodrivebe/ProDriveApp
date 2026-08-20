@@ -304,3 +304,34 @@ def test_order_parser_handles_autohero_multi_row_stock_list() -> None:
         "8100-20260815-509",
     ]
     assert result.overall_confidence > 0.85
+
+
+AUTOHERO_IMPORT_TABLE_MESSAGE = """Location\tStock_ID\tVIN\tModel\tLicense_plate\tAutohero Car\tLL_ID
+Gent\tAS19517\tWVWZZZ1KZAW123456\tGolf\t1ABC123\tyes\tLL001
+Antwerp\tAS19518\tWDD2050471F123456\tC-Klasse\t2DEF456\tno\tLL002
+Brussels\tAS19519\t1HGBH41JXMN109186\tAccord\t3GHI789\tyes\tLL003
+"""
+
+
+def test_order_parser_handles_autohero_import_table_example() -> None:
+    agent = OrderParserAgent()
+    result = agent.parse(AUTOHERO_IMPORT_TABLE_MESSAGE)
+
+    assert len(result.vehicles) == 3
+    assert len(result.parsed_rows) == 3
+    assert result.parsed_rows[0].stock_id == "AS19517"
+    assert result.parsed_rows[0].license_plate == "1ABC123"
+    assert result.parsed_rows[0].ll_id == "LL001"
+    assert result.parsed_rows[0].autohero_car == "yes"
+    assert all(not row.validation_errors for row in result.parsed_rows)
+
+    first_vehicle = result.vehicles[0]
+    assert first_vehicle.vin == "WVWZZZ1KZAW123456"
+    assert first_vehicle.notes is not None
+    assert "AS19517" in first_vehicle.notes
+    assert "1ABC123" in first_vehicle.notes
+    assert "LL001" in first_vehicle.notes
+
+    payload = result.to_output_json()
+    assert len(payload["parsed_rows"]) == 3
+    assert payload["parsed_rows"][1]["stock_id"] == "AS19518"

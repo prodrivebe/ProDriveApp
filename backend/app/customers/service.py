@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.service import AuditService
 from app.common.enums import OrderStatus
-from app.common.exceptions import NotFoundError
+from app.common.exceptions import NotFoundError, ValidationError
 from app.common.tenant import ensure_same_company
 from app.customers.models import Customer, CustomerContact
 from app.customers.repository import CustomerContactRepository, CustomerRepository
@@ -40,6 +40,7 @@ class CustomerService:
         page: int,
         page_size: int,
         search: str | None,
+        is_active: bool | None = None,
     ) -> tuple[list[Customer], int]:
         """List customers for the current company."""
         normalized_page = max(page, 1)
@@ -49,6 +50,7 @@ class CustomerService:
             page=normalized_page,
             page_size=normalized_page_size,
             search=search,
+            is_active=is_active,
         )
 
     def get_customer(self, current_user: User, customer_id: uuid.UUID) -> Customer:
@@ -108,6 +110,15 @@ class CustomerService:
     ) -> None:
         """Soft delete a customer in the current company."""
         customer = self.get_customer(current_user, customer_id)
+        order_count = self._orders.count_for_customer(
+            current_user.company_id,
+            customer_id,
+        )
+        if order_count > 0:
+            raise ValidationError(
+                code="CUSTOMER_HAS_ORDERS",
+                message="Cannot delete a customer with existing orders.",
+            )
         self._repository.soft_delete(customer, current_user.id)
         self._audit_service.record_customer_deleted(
             company_id=current_user.company_id,

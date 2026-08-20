@@ -1,15 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
+  Checkbox,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
@@ -18,7 +24,12 @@ import { useMutation } from "@tanstack/react-query";
 import { aiService } from "../services/aiService";
 import { ConfidenceChip } from "./ConfidenceChip";
 import { ErrorAlert } from "./ErrorAlert";
-import type { AISuggestion, Customer, OrderParseOutput } from "../types/api";
+import type { AISuggestion, Customer, OrderParseOutput, OrderParseTableRow } from "../types/api";
+import {
+  applyTableRowsToOutput,
+  buildTableRows,
+  collectParseValidationMessages,
+} from "../utils/orderParseOutput";
 
 interface AiOrderPanelProps {
   customers: Customer[];
@@ -34,24 +45,32 @@ export function AiOrderPanel({ customers, onOrderCreated }: AiOrderPanelProps) {
   const [customerId, setCustomerId] = useState("");
   const [suggestion, setSuggestion] = useState<AISuggestion | null>(null);
   const [editedOutput, setEditedOutput] = useState<OrderParseOutput | null>(null);
+  const [tableRows, setTableRows] = useState<OrderParseTableRow[]>([]);
   const [rejectReason, setRejectReason] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const parseMutation = useMutation({
     mutationFn: () => aiService.parseOrder(message),
     onSuccess: (data) => {
+      const parsed = asParseOutput(data.output_json);
       setSuggestion(data);
-      setEditedOutput(asParseOutput(data.output_json));
+      setEditedOutput(parsed);
+      setTableRows(buildTableRows(parsed));
+      setConfirmOpen(false);
     },
   });
 
   const approveMutation = useMutation({
-    mutationFn: () =>
-      aiService.approveSuggestion(suggestion!.id, {
+    mutationFn: () => {
+      const outputWithRows = applyTableRowsToOutput(editedOutput!, tableRows);
+      return aiService.approveSuggestion(suggestion!.id, {
         customer_id: customerId,
-        edited_output: editedOutput as Record<string, unknown>,
-      }),
+        edited_output: outputWithRows as Record<string, unknown>,
+      });
+    },
     onSuccess: (data) => {
       const orderId = (data.output_json as OrderParseOutput).created_order_id;
+      setConfirmOpen(false);
       if (orderId) onOrderCreated(orderId);
     },
   });
@@ -63,6 +82,28 @@ export function AiOrderPanel({ customers, onOrderCreated }: AiOrderPanelProps) {
 
   const output = editedOutput;
   const confidence = output?.field_confidence ?? {};
+  const validation = useMemo(
+    () => (output ? collectParseValidationMessages(output) : { errors: [], warnings: [], vehicleCount: 0 }),
+    [output],
+  );
+
+  const updateTableRow = (index: number, field: keyof OrderParseTableRow, value: string | boolean) => {
+    setTableRows((rows) => {
+      const next = [...rows];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const syncRowsToOutput = (rows: OrderParseTableRow[]) => {
+    if (!output) return;
+    setEditedOutput(applyTableRowsToOutput(output, rows));
+  };
+
+  const handleApproveClick = () => {
+    syncRowsToOutput(tableRows);
+    setConfirmOpen(true);
+  };
 
   const updatePickupCity = (index: number, city: string) => {
     if (!output) return;
@@ -76,13 +117,6 @@ export function AiOrderPanel({ customers, onOrderCreated }: AiOrderPanelProps) {
     const deliveryStops = [...(output.delivery_stops ?? [])];
     deliveryStops[index] = { ...deliveryStops[index], city };
     setEditedOutput({ ...output, delivery_stops: deliveryStops });
-  };
-
-  const updateVehicle = (index: number, field: "make" | "model" | "vin", value: string) => {
-    if (!output) return;
-    const vehicles = [...(output.vehicles ?? [])];
-    vehicles[index] = { ...vehicles[index], [field]: value };
-    setEditedOutput({ ...output, vehicles });
   };
 
   return (
@@ -124,8 +158,29 @@ export function AiOrderPanel({ customers, onOrderCreated }: AiOrderPanelProps) {
             <Stack spacing={2}>
               <Alert severity="info">
                 Suggestion {suggestion.status.toLowerCase()} · overall confidence{" "}
-                {Math.round(suggestion.confidence * 100)}%
+                {Math.round(suggestion.confidence * 100)}% · {validation.vehicleCount} vehicle
+                {validation.vehicleCount === 1 ? "" : "s"}
               </Alert>
+
+              {validation.errors.length > 0 ? (
+                <Alert severity="error">
+                  {validation.errors.map((item) => (
+                    <Typography key={item} variant="body2">
+                      {item}
+                    </Typography>
+                  ))}
+                </Alert>
+              ) : null}
+
+              {validation.warnings.length > 0 ? (
+                <Alert severity="warning">
+                  {validation.warnings.map((item) => (
+                    <Typography key={item} variant="body2">
+                      {item}
+                    </Typography>
+                  ))}
+                </Alert>
+              ) : null}
 
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 <ConfidenceChip label="Customer" confidence={confidence.customer_name} />
@@ -133,6 +188,7 @@ export function AiOrderPanel({ customers, onOrderCreated }: AiOrderPanelProps) {
                 <ConfidenceChip label="Delivery" confidence={confidence.delivery} />
                 <ConfidenceChip label="Vehicles" confidence={confidence.vehicles} />
                 <ConfidenceChip label="VIN" confidence={confidence.vin} />
+                <ConfidenceChip label="Autohero" confidence={confidence.autohero_stock} />
                 <ConfidenceChip label="Pickup date" confidence={confidence.planned_pickup_date} />
               </Stack>
 
@@ -168,31 +224,80 @@ export function AiOrderPanel({ customers, onOrderCreated }: AiOrderPanelProps) {
                 />
               ))}
 
-              {(output.vehicles ?? []).map((vehicle, index) => (
-                <Stack key={`vehicle-${index}`} direction={{ xs: "column", md: "row" }} spacing={1}>
-                  <TextField
-                    label="Make"
-                    fullWidth
-                    value={vehicle.make ?? ""}
-                    onChange={(e) => updateVehicle(index, "make", e.target.value)}
-                  />
-                  <TextField
-                    label="Model"
-                    fullWidth
-                    value={vehicle.model ?? ""}
-                    onChange={(e) => updateVehicle(index, "model", e.target.value)}
-                  />
-                  <TextField
-                    label="VIN"
-                    fullWidth
-                    value={vehicle.vin ?? ""}
-                    onChange={(e) => updateVehicle(index, "vin", e.target.value)}
-                    helperText={
-                      (confidence.vin ?? 0) < 0.7 ? "Low confidence VIN — verify manually" : undefined
-                    }
-                  />
-                </Stack>
-              ))}
+              {tableRows.length > 0 ? (
+                <Box sx={{ overflowX: "auto" }}>
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    Parsed vehicles
+                  </Typography>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Stock ID</TableCell>
+                        <TableCell>VIN</TableCell>
+                        <TableCell>Model</TableCell>
+                        <TableCell>License plate</TableCell>
+                        <TableCell>Location</TableCell>
+                        <TableCell>LL ID</TableCell>
+                        <TableCell>Autohero</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {tableRows.map((row, index) => (
+                        <TableRow key={`row-${index}`}>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={row.stock_id ?? ""}
+                              onChange={(e) => updateTableRow(index, "stock_id", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={row.vin ?? ""}
+                              onChange={(e) => updateTableRow(index, "vin", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={row.model ?? ""}
+                              onChange={(e) => updateTableRow(index, "model", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={row.license_plate ?? ""}
+                              onChange={(e) => updateTableRow(index, "license_plate", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={row.location ?? ""}
+                              onChange={(e) => updateTableRow(index, "location", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={row.ll_id ?? ""}
+                              onChange={(e) => updateTableRow(index, "ll_id", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Checkbox
+                              checked={Boolean(row.autohero_car)}
+                              onChange={(e) => updateTableRow(index, "autohero_car", e.target.checked)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              ) : null}
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                 <TextField
@@ -243,15 +348,39 @@ export function AiOrderPanel({ customers, onOrderCreated }: AiOrderPanelProps) {
                     </Select>
                   </FormControl>
 
-                  <Stack direction="row" spacing={2}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={() => approveMutation.mutate()}
-                      disabled={!customerId || approveMutation.isPending}
-                    >
-                      {approveMutation.isPending ? "Creating order..." : "Approve & create order"}
-                    </Button>
+                  {confirmOpen ? (
+                    <Alert severity="warning">
+                      Confirm creation of order with {tableRows.length || validation.vehicleCount} vehicle
+                      {(tableRows.length || validation.vehicleCount) === 1 ? "" : "s"} for the selected
+                      customer?
+                    </Alert>
+                  ) : null}
+
+                  <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+                    {!confirmOpen ? (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={handleApproveClick}
+                        disabled={!customerId}
+                      >
+                        Review &amp; confirm
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          onClick={() => approveMutation.mutate()}
+                          disabled={!customerId || approveMutation.isPending}
+                        >
+                          {approveMutation.isPending ? "Creating order..." : "Approve & create order"}
+                        </Button>
+                        <Button variant="outlined" onClick={() => setConfirmOpen(false)}>
+                          Back to edit
+                        </Button>
+                      </>
+                    )}
                     <TextField
                       label="Rejection reason"
                       size="small"

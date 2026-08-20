@@ -331,3 +331,32 @@ def test_customer_history_returns_orders(
 
     assert response.status_code == 200
     assert response.json()["meta"]["pagination"]["total"] == 1
+
+
+def test_order_list_includes_customer_name(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Order list responses include the customer company name."""
+    headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
+    customer_response = client.post(
+        "/api/v1/customers",
+        headers=headers,
+        json={"company_name": "Named Customer GmbH"},
+    )
+    customer_id = customer_response.json()["data"]["id"]
+    client.post(
+        "/api/v1/orders",
+        headers=headers,
+        json={"customer_id": customer_id},
+    )
+
+    list_response = client.get("/api/v1/orders", headers=headers)
+    assert list_response.status_code == 200
+    matching = [
+        order
+        for order in list_response.json()["data"]
+        if order["customer_id"] == customer_id
+    ]
+    assert matching
+    assert matching[0]["customer_name"] == "Named Customer GmbH"

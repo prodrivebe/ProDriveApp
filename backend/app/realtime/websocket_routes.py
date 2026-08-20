@@ -8,7 +8,7 @@ import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 from app.auth.security import decode_jwt_token
@@ -55,9 +55,9 @@ def _authenticate_token(token: str, settings: Settings) -> tuple[uuid.UUID, uuid
 async def websocket_endpoint(
     websocket: WebSocket,
     token: str = Query(..., description="JWT access token"),
+    settings: Settings = Depends(get_settings),
 ) -> None:
     """Authenticated realtime websocket."""
-    settings = get_settings()
     service = get_event_service()
     if service is None:
         await websocket.close(code=1013)

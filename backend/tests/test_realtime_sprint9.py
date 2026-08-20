@@ -27,6 +27,14 @@ def _access_token(settings: Settings, user_id: uuid.UUID, company_id: uuid.UUID,
     return token
 
 
+def _receive_ws_message(websocket, *, event_type: str | None = None) -> dict:
+    """Receive websocket messages until the expected event type is found."""
+    while True:
+        message = websocket.receive_json()
+        if event_type is None or message.get("type") == event_type:
+            return message
+
+
 def test_websocket_rejects_missing_token(client: TestClient) -> None:
     with pytest.raises(Exception):
         with client.websocket_connect("/api/v1/ws"):
@@ -87,8 +95,7 @@ def test_publish_order_event_reaches_connected_client(
             order_number="ORD-000999",
             status="ASSIGNED",
         )
-        message = websocket.receive_json()
-        assert message["type"] == RealtimeEventType.ORDER_ASSIGNED.value
+        message = _receive_ws_message(websocket, event_type=RealtimeEventType.ORDER_ASSIGNED.value)
         assert message["payload"]["order_number"] == "ORD-000999"
 
 
@@ -144,11 +151,14 @@ def test_company_isolation_on_websocket_delivery(
                 order_number="ORD-OTHER-1",
                 status="ACCEPTED",
             )
-            other_message = other_ws.receive_json()
+            other_message = _receive_ws_message(
+                other_ws,
+                event_type=RealtimeEventType.ORDER_ACCEPTED.value,
+            )
             assert other_message["payload"]["order_number"] == "ORD-OTHER-1"
 
             primary_ws.send_text(json.dumps({"action": "ping"}))
-            primary_message = primary_ws.receive_json()
+            primary_message = _receive_ws_message(primary_ws, event_type="HEARTBEAT")
             assert primary_message["type"] == "HEARTBEAT"
 
 

@@ -108,6 +108,7 @@ class TruckRepository:
             model=payload.model,
             vin=payload.vin,
             capacity=payload.capacity,
+            current_mileage=payload.current_mileage,
             active=payload.active,
             created_by=created_by,
             updated_by=created_by,
@@ -129,6 +130,7 @@ class TruckRepository:
         truck.model = payload.model
         truck.vin = payload.vin
         truck.capacity = payload.capacity
+        truck.current_mileage = payload.current_mileage
         truck.active = payload.active
         truck.updated_by = updated_by
         self._db.add(truck)

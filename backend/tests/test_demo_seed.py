@@ -45,7 +45,7 @@ def test_demo_lookup_seed_populates_order_form_data(
     assert len(trailers.json()["data"]) >= DEMO_TRAILER_COUNT
 
 
-def test_demo_seed_is_idempotent(db_session: Session) -> None:
+def test_demo_seed_is_idempotent(client: TestClient, db_session: Session) -> None:
     """Running the demo seed twice yields the same canonical dataset counts."""
     from app.companies.models import Company
 

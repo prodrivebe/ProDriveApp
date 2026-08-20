@@ -32,6 +32,7 @@ import { LoadingState } from "../components/LoadingState";
 import { PhotoGallery } from "../components/PhotoGallery";
 import { StatusChip } from "../components/StatusChip";
 import { TimelineViewer } from "../components/TimelineViewer";
+import { formatDriverName } from "../utils/driverDisplay";
 import { AiDriverPanel } from "../components/AiDriverPanel";
 import { formatDate, formatDateTime, formatStopCities } from "../utils/format";
 import { resolveUploadUrl } from "../app/config";
@@ -195,7 +196,7 @@ export function OrderDetailPage() {
                   >
                     {driversQuery.data?.items.map((driver) => (
                       <MenuItem key={driver.id} value={driver.id}>
-                        {driver.phone ?? driver.id.slice(0, 8)}
+                        {formatDriverName(driver)}
                       </MenuItem>
                     ))}
                   </Select>

@@ -54,6 +54,7 @@ from app.realtime.routes import router as realtime_router
 from app.realtime.websocket_routes import router as realtime_ws_router
 from app.trailers.routes import router as trailers_router
 from app.trucks.routes import router as trucks_router
+from app.trucks.operational_routes import router as truck_operational_router
 from app.users.routes import router as users_router
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(
         trucks_router,
+        prefix=app_settings.api_v1_prefix,
+    )
+    application.include_router(
+        truck_operational_router,
         prefix=app_settings.api_v1_prefix,
     )
     application.include_router(

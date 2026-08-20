@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.common.enums import OrderStatus
 from app.drivers.repository import DriverRepository
-from app.fleet.schemas import FleetOverviewResponse
+from app.fleet.schemas import FleetEntitySummary, FleetOverviewResponse
 from app.reports.repository import ReportRepository
 from app.reports.schemas import (
     CustomerActivityItem,

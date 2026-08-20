@@ -140,7 +140,14 @@ def test_driver_workflow_notifies_dispatchers_on_completion(
     order_response = client.post(
         "/api/v1/orders",
         headers=admin_headers,
-        json={"customer_id": customer_id},
+        json={
+            "customer_id": customer_id,
+            "stops": [
+                {"stop_type": "PICKUP", "sequence": 1, "city": "Brussels", "country": "BE"},
+                {"stop_type": "DELIVERY", "sequence": 2, "city": "Antwerp", "country": "BE"},
+            ],
+            "vehicles": [{"make": "BMW", "model": "320", "vin": "WBAPH5C55BA123456"}],
+        },
     )
     order_id = order_response.json()["data"]["id"]
     client.post(
@@ -160,6 +167,15 @@ def test_driver_workflow_notifies_dispatchers_on_completion(
         "complete-delivery",
     ):
         if path == "complete-loading":
+            order = client.get(f"/api/v1/orders/{order_id}", headers=driver_headers)
+            assert order.status_code == 200
+            for vehicle in order.json()["data"]["vehicles"]:
+                verify = client.post(
+                    f"/api/v1/orders/{order_id}/vehicles/{vehicle['id']}/verify-vin",
+                    headers=driver_headers,
+                    json={"vin": vehicle.get("vin") or "WBAPH5C55BA123456"},
+                )
+                assert verify.status_code == 200, verify.text
             generate = client.post(
                 f"/api/v1/orders/{order_id}/cmr/generate",
                 headers=driver_headers,

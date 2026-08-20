@@ -68,7 +68,7 @@ def list_orders(
         driver_id=driver_id,
         search=search,
     )
-    data = [OrderListResponse.model_validate(order) for order in orders]
+    data = order_service.build_enriched_list_responses(current_user.company_id, orders)
     return success_response(data, meta=build_list_meta(page, page_size, total))
 
 
@@ -92,7 +92,9 @@ def get_order(
 ) -> SuccessResponse[OrderResponse]:
     """Return an order."""
     order = order_service.get_order(current_user, order_id)
-    return success_response(OrderResponse.model_validate(order))
+    return success_response(
+        order_service.build_enriched_order_response(current_user.company_id, order)
+    )
 
 
 @router.put("/{order_id}", response_model=SuccessResponse[OrderResponse])

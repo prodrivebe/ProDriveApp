@@ -7,14 +7,27 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-ROUTES_MANIFEST_PATH = REPO_ROOT / "shared" / "api-routes.json"
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_routes_manifest_path() -> Path:
+    """Locate the shared route manifest for full-repo and backend-only layouts."""
+    candidates = (
+        BACKEND_ROOT.parent / "shared" / "api-routes.json",
+        BACKEND_ROOT / "shared" / "api-routes.json",
+        Path("/shared/api-routes.json"),
+    )
+    for candidate in candidates:
+        if candidate.is_file() and candidate.stat().st_size > 0:
+            return candidate
+    return candidates[0]
 
 
 @lru_cache
 def load_api_routes_manifest() -> dict[str, Any]:
     """Load the shared API route manifest from the repository root."""
-    with ROUTES_MANIFEST_PATH.open(encoding="utf-8") as handle:
+    manifest_path = _resolve_routes_manifest_path()
+    with manifest_path.open(encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -51,5 +64,5 @@ def iter_manifest_paths(*, prefix: str | None = None) -> list[tuple[str, str]]:
         if not isinstance(section_routes, dict):
             continue
         for name in section_routes:
-            pairs.append((f"{section}.{name}", full_api_path(section, name, prefix=resolved_prefix))])
+            pairs.append((f"{section}.{name}", full_api_path(section, name, prefix=resolved_prefix)))
     return pairs

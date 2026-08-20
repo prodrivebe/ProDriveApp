@@ -9,6 +9,7 @@ import { CreateOrderPage } from "../pages/CreateOrderPage";
 import { DriversPage } from "../pages/DriversPage";
 import { DriverDetailPage } from "../pages/DriverDetailPage";
 import { FleetPage } from "../pages/FleetPage";
+import { TruckDetailPage } from "../pages/TruckDetailPage";
 import { CustomersPage } from "../pages/CustomersPage";
 import { CustomerDetailPage } from "../pages/CustomerDetailPage";
 import { DocumentsPage } from "../pages/DocumentsPage";
@@ -45,6 +46,7 @@ export function AppRouter() {
           <Route path="/drivers" element={<DriversPage />} />
           <Route path="/drivers/:driverId" element={<DriverDetailPage />} />
           <Route path="/fleet" element={<FleetPage />} />
+          <Route path="/fleet/trucks/:truckId" element={<TruckDetailPage />} />
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/customers/:customerId" element={<CustomerDetailPage />} />
           <Route path="/documents" element={<DocumentsPage />} />

@@ -133,6 +133,8 @@ class OrderResponse(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+    customer_name: str | None = None
+    assigned_driver_name: str | None = None
     stops: list[OrderStopResponse] = Field(default_factory=list)
     vehicles: list[OrderVehicleResponse] = Field(default_factory=list)
 
@@ -168,6 +170,8 @@ class OrderListResponse(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+    customer_name: str | None = None
+    assigned_driver_name: str | None = None
 
 
 class OrderCreateRequest(BaseModel):

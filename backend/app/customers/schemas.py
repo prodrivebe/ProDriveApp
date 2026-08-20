@@ -1,7 +1,7 @@
 """Customer API schemas."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -15,11 +15,17 @@ class CustomerResponse(BaseModel):
     company_id: uuid.UUID
     company_name: str
     vat_number: str | None
+    street: str | None
+    house_number: str | None
+    postal_code: str | None
     address: str | None
     city: str | None
     country: str | None
     email: str | None
+    invoice_email: str | None
     phone: str | None
+    dispatch_phone: str | None
+    is_active: bool
     notes: str | None
     created_at: datetime
     updated_at: datetime
@@ -30,11 +36,17 @@ class CustomerCreateRequest(BaseModel):
 
     company_name: str = Field(min_length=1, max_length=255)
     vat_number: str | None = Field(default=None, max_length=64)
+    street: str | None = Field(default=None, max_length=255)
+    house_number: str | None = Field(default=None, max_length=32)
+    postal_code: str | None = Field(default=None, max_length=20)
     address: str | None = Field(default=None, max_length=500)
     city: str | None = Field(default=None, max_length=100)
     country: str | None = Field(default=None, max_length=100)
     email: EmailStr | None = None
+    invoice_email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=50)
+    dispatch_phone: str | None = Field(default=None, max_length=50)
+    is_active: bool = True
     notes: str | None = Field(default=None, max_length=5000)
 
 
@@ -43,11 +55,17 @@ class CustomerUpdateRequest(BaseModel):
 
     company_name: str = Field(min_length=1, max_length=255)
     vat_number: str | None = Field(default=None, max_length=64)
+    street: str | None = Field(default=None, max_length=255)
+    house_number: str | None = Field(default=None, max_length=32)
+    postal_code: str | None = Field(default=None, max_length=20)
     address: str | None = Field(default=None, max_length=500)
     city: str | None = Field(default=None, max_length=100)
     country: str | None = Field(default=None, max_length=100)
     email: EmailStr | None = None
+    invoice_email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=50)
+    dispatch_phone: str | None = Field(default=None, max_length=50)
+    is_active: bool = True
     notes: str | None = Field(default=None, max_length=5000)
 
 

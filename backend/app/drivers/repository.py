@@ -91,6 +91,26 @@ class DriverRepository:
         )
         return list(self._db.scalars(statement).all()), total
 
+    def get_by_ids_for_company(
+        self,
+        driver_ids: set[uuid.UUID],
+        company_id: uuid.UUID,
+    ) -> dict[uuid.UUID, Driver]:
+        """Return drivers keyed by id for batch enrichment."""
+        if not driver_ids:
+            return {}
+        statement = (
+            select(Driver)
+            .where(
+                Driver.id.in_(driver_ids),
+                Driver.company_id == company_id,
+                Driver.deleted_at.is_(None),
+            )
+            .options(selectinload(Driver.user))
+        )
+        drivers = list(self._db.scalars(statement).all())
+        return {driver.id: driver for driver in drivers}
+
     def count_for_company(self, company_id: uuid.UUID) -> tuple[int, int]:
         """Return total and active driver counts."""
         base_filters = [Driver.company_id == company_id, Driver.deleted_at.is_(None)]
@@ -120,8 +140,18 @@ class DriverRepository:
             company_id=company_id,
             user_id=payload.user_id,
             phone=payload.phone,
+            address=payload.address,
+            country=payload.country,
+            date_of_birth=payload.date_of_birth,
+            id_document_number=payload.id_document_number,
+            id_expiry=payload.id_expiry,
             driving_license=payload.driving_license,
+            driving_licence_expiry=payload.driving_licence_expiry,
             adr_certificate=payload.adr_certificate,
+            code95_expiry=payload.code95_expiry,
+            tachograph_card_number=payload.tachograph_card_number,
+            tachograph_card_expiry=payload.tachograph_card_expiry,
+            visa_residence_expiry=payload.visa_residence_expiry,
             notes=payload.notes,
             active=payload.active,
             created_by=created_by,
@@ -150,8 +180,18 @@ class DriverRepository:
     ) -> Driver:
         """Update a driver profile."""
         driver.phone = payload.phone
+        driver.address = payload.address
+        driver.country = payload.country
+        driver.date_of_birth = payload.date_of_birth
+        driver.id_document_number = payload.id_document_number
+        driver.id_expiry = payload.id_expiry
         driver.driving_license = payload.driving_license
+        driver.driving_licence_expiry = payload.driving_licence_expiry
         driver.adr_certificate = payload.adr_certificate
+        driver.code95_expiry = payload.code95_expiry
+        driver.tachograph_card_number = payload.tachograph_card_number
+        driver.tachograph_card_expiry = payload.tachograph_card_expiry
+        driver.visa_residence_expiry = payload.visa_residence_expiry
         driver.notes = payload.notes
         driver.active = payload.active
         driver.updated_by = updated_by

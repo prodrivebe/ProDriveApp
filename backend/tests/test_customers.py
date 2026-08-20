@@ -233,3 +233,90 @@ def test_customer_history_returns_empty_when_no_orders(
     assert body["success"] is True
     assert body["data"] == []
     assert body["meta"]["pagination"]["total"] == 0
+
+
+def test_customer_operational_fields_crud(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Admin can create and update customers with operational fields."""
+    headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
+    create_response = client.post(
+        "/api/v1/customers",
+        headers=headers,
+        json={
+            "company_name": "Operational Customer BV",
+            "street": "Main Street",
+            "house_number": "42",
+            "postal_code": "1000",
+            "city": "Brussels",
+            "country": "BE",
+            "invoice_email": "billing@operational.example.com",
+            "dispatch_phone": "+3212345678",
+            "is_active": True,
+        },
+    )
+    assert create_response.status_code == 201
+    customer_id = create_response.json()["data"]["id"]
+    assert create_response.json()["data"]["street"] == "Main Street"
+    assert create_response.json()["data"]["is_active"] is True
+
+    update_response = client.put(
+        f"/api/v1/customers/{customer_id}",
+        headers=headers,
+        json={
+            "company_name": "Operational Customer BV",
+            "street": "Updated Street",
+            "house_number": "42",
+            "postal_code": "1000",
+            "city": "Brussels",
+            "country": "BE",
+            "is_active": False,
+        },
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["data"]["street"] == "Updated Street"
+    assert update_response.json()["data"]["is_active"] is False
+
+    list_response = client.get(
+        "/api/v1/customers",
+        headers=headers,
+        params={"is_active": False},
+    )
+    assert list_response.status_code == 200
+    assert any(item["id"] == customer_id for item in list_response.json()["data"])
+
+
+def test_delete_customer_blocked_when_orders_exist(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Customer delete is blocked when orders reference the customer."""
+    headers = {"Authorization": f"Bearer {admin_tokens['access_token']}"}
+    customer_response = client.post(
+        "/api/v1/customers",
+        headers=headers,
+        json={"company_name": "Customer With Orders"},
+    )
+    customer_id = customer_response.json()["data"]["id"]
+
+    order_response = client.post(
+        "/api/v1/orders",
+        headers=headers,
+        json={
+            "customer_id": customer_id,
+            "stops": [
+                {"stop_type": "PICKUP", "sequence": 1, "city": "Gent"},
+                {"stop_type": "DELIVERY", "sequence": 2, "city": "Brussels"},
+            ],
+            "vehicles": [{"make": "BMW", "model": "X5"}],
+        },
+    )
+    assert order_response.status_code == 201
+
+    delete_response = client.delete(
+        f"/api/v1/customers/{customer_id}",
+        headers=headers,
+    )
+    assert delete_response.status_code == 422
+    assert delete_response.json()["error"]["code"] == "CUSTOMER_HAS_ORDERS"

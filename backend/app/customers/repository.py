@@ -41,20 +41,28 @@ class CustomerRepository:
         page: int,
         page_size: int,
         search: str | None = None,
+        is_active: bool | None = None,
     ) -> tuple[list[Customer], int]:
         """Return paginated customers for a company."""
         filters = [Customer.company_id == company_id, Customer.deleted_at.is_(None)]
+        if is_active is not None:
+            filters.append(Customer.is_active.is_(is_active))
         if search:
             pattern = f"%{search.strip()}%"
             filters.append(
                 or_(
                     Customer.company_name.ilike(pattern),
                     Customer.vat_number.ilike(pattern),
+                    Customer.street.ilike(pattern),
+                    Customer.house_number.ilike(pattern),
+                    Customer.postal_code.ilike(pattern),
                     Customer.address.ilike(pattern),
                     Customer.city.ilike(pattern),
                     Customer.country.ilike(pattern),
                     Customer.email.ilike(pattern),
+                    Customer.invoice_email.ilike(pattern),
                     Customer.phone.ilike(pattern),
+                    Customer.dispatch_phone.ilike(pattern),
                     Customer.notes.ilike(pattern),
                 )
             )
@@ -71,6 +79,22 @@ class CustomerRepository:
         )
         return list(self._db.scalars(statement).all()), total
 
+    def get_by_ids_for_company(
+        self,
+        customer_ids: set[uuid.UUID],
+        company_id: uuid.UUID,
+    ) -> dict[uuid.UUID, Customer]:
+        """Return customers keyed by id for batch enrichment."""
+        if not customer_ids:
+            return {}
+        statement = select(Customer).where(
+            Customer.id.in_(customer_ids),
+            Customer.company_id == company_id,
+            Customer.deleted_at.is_(None),
+        )
+        customers = list(self._db.scalars(statement).all())
+        return {customer.id: customer for customer in customers}
+
     def create(
         self,
         *,
@@ -83,11 +107,17 @@ class CustomerRepository:
             company_id=company_id,
             company_name=payload.company_name.strip(),
             vat_number=payload.vat_number,
+            street=payload.street,
+            house_number=payload.house_number,
+            postal_code=payload.postal_code,
             address=payload.address,
             city=payload.city,
             country=payload.country,
             email=str(payload.email).lower() if payload.email else None,
+            invoice_email=str(payload.invoice_email).lower() if payload.invoice_email else None,
             phone=payload.phone,
+            dispatch_phone=payload.dispatch_phone,
+            is_active=payload.is_active,
             notes=payload.notes,
             created_by=created_by,
             updated_by=created_by,
@@ -106,11 +136,19 @@ class CustomerRepository:
         """Update a customer record."""
         customer.company_name = payload.company_name.strip()
         customer.vat_number = payload.vat_number
+        customer.street = payload.street
+        customer.house_number = payload.house_number
+        customer.postal_code = payload.postal_code
         customer.address = payload.address
         customer.city = payload.city
         customer.country = payload.country
         customer.email = str(payload.email).lower() if payload.email else None
+        customer.invoice_email = (
+            str(payload.invoice_email).lower() if payload.invoice_email else None
+        )
         customer.phone = payload.phone
+        customer.dispatch_phone = payload.dispatch_phone
+        customer.is_active = payload.is_active
         customer.notes = payload.notes
         customer.updated_by = updated_by
         self._db.add(customer)

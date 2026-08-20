@@ -26,6 +26,7 @@ import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingState } from "../components/LoadingState";
 import { StatusChip } from "../components/StatusChip";
 import { formatDate, formatStopCities } from "../utils/format";
+import { formatDriverName } from "../utils/driverDisplay";
 import type { OrderDetail } from "../types/api";
 
 const STATUS_OPTIONS = [
@@ -61,12 +62,12 @@ export function OrdersPage() {
 
   const customersQuery = useQuery({
     queryKey: ["customers", "lookup"],
-    queryFn: () => customersService.list({ page: 1, page_size: 200 }),
+    queryFn: () => customersService.list({ page: 1, page_size: 100 }),
   });
 
   const driversQuery = useQuery({
     queryKey: ["drivers", "lookup"],
-    queryFn: () => driversService.list({ page: 1, page_size: 200 }),
+    queryFn: () => driversService.list({ page: 1, page_size: 100 }),
   });
 
   const customerMap = useMemo(() => {
@@ -169,7 +170,9 @@ export function OrdersPage() {
                     {order.order_number}
                   </Button>
                 </TableCell>
-                <TableCell>{customerMap.get(order.customer_id) ?? "—"}</TableCell>
+                <TableCell>
+                  {order.customer_name ?? customerMap.get(order.customer_id) ?? "—"}
+                </TableCell>
                 <TableCell>
                   {detail ? formatStopCities(detail.stops, "PICKUP") : "—"}
                 </TableCell>
@@ -177,10 +180,17 @@ export function OrdersPage() {
                   {detail ? formatStopCities(detail.stops, "DELIVERY") : "—"}
                 </TableCell>
                 <TableCell>
-                  {order.assigned_driver_id
-                    ? driversQuery.data?.items.find((d) => d.id === order.assigned_driver_id)?.phone ??
-                      order.assigned_driver_id.slice(0, 8)
-                    : "—"}
+                  {order.assigned_driver_name ??
+                    (order.assigned_driver_id
+                      ? formatDriverName(
+                          driversQuery.data?.items.find((d) => d.id === order.assigned_driver_id) ?? {
+                            id: order.assigned_driver_id,
+                            first_name: null,
+                            last_name: null,
+                            phone: null,
+                          },
+                        )
+                      : "—")}
                 </TableCell>
                 <TableCell>
                   <StatusChip status={order.status} />

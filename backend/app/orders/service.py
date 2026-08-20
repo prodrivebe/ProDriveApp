@@ -25,6 +25,8 @@ from app.orders.repository import OrderRepository
 from app.orders.schemas import (
     AssignDriverRequest,
     OrderCreateRequest,
+    OrderListResponse,
+    OrderResponse,
     OrderStopCreateRequest,
     OrderStopUpdateRequest,
     OrderSummaryResponse,
@@ -33,6 +35,7 @@ from app.orders.schemas import (
     OrderVehicleUpdateRequest,
     VinUpdateRequest,
 )
+from app.drivers.service import DriverService
 from app.orders.validators import (
     ensure_order_view_access,
     normalize_vin,
@@ -94,6 +97,58 @@ class OrderService:
             customer_id=customer_id,
             driver_id=driver_id,
             search=search,
+        )
+
+    def build_enriched_list_responses(
+        self,
+        company_id: uuid.UUID,
+        orders: list[Order],
+    ) -> list[OrderListResponse]:
+        """Build list responses enriched with customer and driver names."""
+        customer_ids = {order.customer_id for order in orders}
+        driver_ids = {
+            order.assigned_driver_id
+            for order in orders
+            if order.assigned_driver_id is not None
+        }
+        customers = self._customers.get_by_ids_for_company(customer_ids, company_id)
+        drivers = self._drivers.get_by_ids_for_company(driver_ids, company_id)
+
+        enriched: list[OrderListResponse] = []
+        for order in orders:
+            customer = customers.get(order.customer_id)
+            assigned_driver_name: str | None = None
+            if order.assigned_driver_id is not None:
+                driver = drivers.get(order.assigned_driver_id)
+                if driver is not None:
+                    assigned_driver_name = DriverService.build_display_name(
+                        driver,
+                        driver.user,
+                    )
+            enriched.append(
+                OrderListResponse.model_validate(order).model_copy(
+                    update={
+                        "customer_name": customer.company_name if customer else None,
+                        "assigned_driver_name": assigned_driver_name,
+                    }
+                )
+            )
+        return enriched
+
+    def build_enriched_order_response(
+        self,
+        company_id: uuid.UUID,
+        order: Order,
+    ) -> OrderResponse:
+        """Build a detailed order response enriched with customer and driver names."""
+        responses = self.build_enriched_list_responses(company_id, [order])
+        base = OrderResponse.model_validate(order)
+        enrichment = responses[0]
+        return base.model_copy(
+            update={
+                "customer_name": enrichment.customer_name,
+                "assigned_driver_name": enrichment.assigned_driver_name,
+            }
         )
 
     def get_order(self, current_user: User, order_id: uuid.UUID) -> Order:

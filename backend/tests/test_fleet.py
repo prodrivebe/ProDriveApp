@@ -684,3 +684,92 @@ def test_assignment_with_unknown_driver_returns_not_found(
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "DRIVER_NOT_FOUND"
+
+
+def test_admin_can_create_driver_with_inline_user(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Admin can create a driver profile with inline user creation."""
+    headers = _auth_headers(admin_tokens["access_token"])
+    response = client.post(
+        "/api/v1/drivers",
+        headers=headers,
+        json={
+            "first_name": "Inline",
+            "last_name": "Driver",
+            "email": "inline.driver@example.com",
+            "password": "Driver123!",
+            "phone": "+37060000099",
+            "address": "Fleet Street 1",
+            "country": "BE",
+            "active": True,
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()["data"]
+    assert body["first_name"] == "Inline"
+    assert body["last_name"] == "Driver"
+    assert body["email"] == "inline.driver@example.com"
+    assert body["address"] == "Fleet Street 1"
+
+
+def test_admin_can_manage_truck_maintenance_records(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Admin can create, update, list, and delete truck maintenance records."""
+    headers = _auth_headers(admin_tokens["access_token"])
+    truck_response = client.post(
+        "/api/v1/trucks",
+        headers=headers,
+        json={
+            "registration_number": "OPS001",
+            "brand": "Scania",
+            "current_mileage": 120000,
+            "active": True,
+        },
+    )
+    assert truck_response.status_code == 201
+    truck_id = truck_response.json()["data"]["id"]
+    assert truck_response.json()["data"]["current_mileage"] == 120000
+
+    create_response = client.post(
+        f"/api/v1/trucks/{truck_id}/maintenance",
+        headers=headers,
+        json={
+            "maintenance_date": "2026-08-01",
+            "mileage": 120500,
+            "maintenance_type": "oil_change",
+            "notes": "Regular service",
+        },
+    )
+    assert create_response.status_code == 201
+    record_id = create_response.json()["data"]["id"]
+
+    list_response = client.get(
+        f"/api/v1/trucks/{truck_id}/maintenance",
+        headers=headers,
+    )
+    assert list_response.status_code == 200
+    assert len(list_response.json()["data"]) == 1
+
+    update_response = client.put(
+        f"/api/v1/trucks/{truck_id}/maintenance/{record_id}",
+        headers=headers,
+        json={
+            "maintenance_date": "2026-08-02",
+            "mileage": 120600,
+            "maintenance_type": "oil_change",
+            "notes": "Updated service note",
+        },
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["data"]["notes"] == "Updated service note"
+
+    delete_response = client.delete(
+        f"/api/v1/trucks/{truck_id}/maintenance/{record_id}",
+        headers=headers,
+    )
+    assert delete_response.status_code == 200

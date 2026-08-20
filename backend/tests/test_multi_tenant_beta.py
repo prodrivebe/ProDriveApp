@@ -34,15 +34,17 @@ def _bootstrap_other_company(db_engine, test_settings) -> tuple[str, str]:
     )
     session.add(admin)
     session.commit()
+    session.refresh(admin)
+    company_id = company.id
     token, _ = create_jwt_token(
         settings=test_settings,
         user_id=admin.id,
-        company_id=admin.company_id,
+        company_id=company_id,
         role=UserRole.ADMIN,
         token_type="access",
     )
     session.close()
-    return str(company.id), token
+    return str(company_id), token
 
 
 def test_orders_are_isolated_between_companies(

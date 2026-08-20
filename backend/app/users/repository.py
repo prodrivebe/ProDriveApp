@@ -212,6 +212,28 @@ class UserRepository:
         self._db.refresh(user)
         return user
 
+    def update_profile_fields(
+        self,
+        user: User,
+        *,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        email: str | None = None,
+        updated_by: uuid.UUID,
+    ) -> User:
+        """Update selected profile fields on a user record."""
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
+        if email is not None:
+            user.email = email.lower()
+        user.updated_by = updated_by
+        self._db.add(user)
+        self._db.commit()
+        self._db.refresh(user)
+        return user
+
     def soft_delete(self, user: User, deleted_by: uuid.UUID) -> User:
         """Soft delete a user record."""
         user.deleted_at = datetime.now(tz=UTC)

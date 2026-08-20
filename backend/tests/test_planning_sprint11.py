@@ -77,7 +77,7 @@ def _create_order(client: TestClient, headers: dict[str, str], customer_id: str)
             ],
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     return response.json()["data"]["id"]
 
 

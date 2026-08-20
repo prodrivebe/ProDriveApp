@@ -56,6 +56,8 @@ export interface OrderListItem {
   planned_pickup_date: string | null;
   planned_delivery_date: string | null;
   notes: string | null;
+  customer_name?: string | null;
+  assigned_driver_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -147,13 +149,43 @@ export interface CompletionChecklist {
 
 export interface Customer {
   id: string;
+  company_id?: string;
   company_name: string;
+  vat_number?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  postal_code?: string | null;
+  address: string | null;
   city: string | null;
   country: string | null;
   email: string | null;
+  invoice_email?: string | null;
   phone: string | null;
-  address: string | null;
+  dispatch_phone?: string | null;
+  is_active?: boolean;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
+
+export interface CustomerCreatePayload {
+  company_name: string;
+  vat_number?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  postal_code?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  email?: string | null;
+  invoice_email?: string | null;
+  phone?: string | null;
+  dispatch_phone?: string | null;
+  is_active?: boolean;
+  notes?: string | null;
+}
+
+export type CustomerUpdatePayload = CustomerCreatePayload;
 
 export interface CustomerContact {
   id: string;
@@ -167,17 +199,155 @@ export interface CustomerContact {
 export interface Driver {
   id: string;
   user_id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  display_name?: string | null;
   phone: string | null;
+  address?: string | null;
+  country?: string | null;
+  date_of_birth?: string | null;
+  id_document_number?: string | null;
+  id_expiry?: string | null;
+  driving_license?: string | null;
+  driving_licence_expiry?: string | null;
+  adr_certificate?: string | null;
+  code95_expiry?: string | null;
+  tachograph_card_number?: string | null;
+  tachograph_card_expiry?: string | null;
+  visa_residence_expiry?: string | null;
   active: boolean;
   notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DriverCreatePayload {
+  user_id?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  password?: string;
+  phone?: string | null;
+  address?: string | null;
+  country?: string | null;
+  date_of_birth?: string | null;
+  id_document_number?: string | null;
+  id_expiry?: string | null;
+  driving_license?: string | null;
+  driving_licence_expiry?: string | null;
+  adr_certificate?: string | null;
+  code95_expiry?: string | null;
+  tachograph_card_number?: string | null;
+  tachograph_card_expiry?: string | null;
+  visa_residence_expiry?: string | null;
+  notes?: string | null;
+  active?: boolean;
+}
+
+export interface DriverUpdatePayload {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  country?: string | null;
+  date_of_birth?: string | null;
+  id_document_number?: string | null;
+  id_expiry?: string | null;
+  driving_license?: string | null;
+  driving_licence_expiry?: string | null;
+  adr_certificate?: string | null;
+  code95_expiry?: string | null;
+  tachograph_card_number?: string | null;
+  tachograph_card_expiry?: string | null;
+  visa_residence_expiry?: string | null;
+  notes?: string | null;
+  active?: boolean;
 }
 
 export interface Truck {
   id: string;
+  company_id?: string;
   registration_number: string;
   active: boolean;
-  make: string | null;
+  brand: string | null;
   model: string | null;
+  vin?: string | null;
+  capacity?: number | null;
+  current_mileage?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TruckCreatePayload {
+  registration_number: string;
+  brand?: string | null;
+  model?: string | null;
+  vin?: string | null;
+  capacity?: number | null;
+  active?: boolean;
+}
+
+export interface TruckUpdatePayload {
+  registration_number: string;
+  brand?: string | null;
+  model?: string | null;
+  vin?: string | null;
+  capacity?: number | null;
+  current_mileage?: number | null;
+  active?: boolean;
+}
+
+export interface TruckMaintenanceRecord {
+  id: string;
+  truck_id: string;
+  maintenance_date: string;
+  mileage: number | null;
+  maintenance_type: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TruckInspectionRecord {
+  id: string;
+  truck_id: string;
+  inspection_date: string;
+  mileage: number | null;
+  inspection_type: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TruckTireRecord {
+  id: string;
+  truck_id: string;
+  tire_date: string;
+  mileage: number | null;
+  tire_type: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TruckMaintenanceCreatePayload {
+  maintenance_date: string;
+  mileage?: number | null;
+  maintenance_type: string;
+  notes?: string | null;
+}
+
+export interface TruckInspectionCreatePayload {
+  inspection_date: string;
+  mileage?: number | null;
+  inspection_type: string;
+  notes?: string | null;
+}
+
+export interface TruckTireCreatePayload {
+  tire_date: string;
+  mileage?: number | null;
+  tire_type: string;
+  notes?: string | null;
 }
 
 export interface Trailer {
@@ -318,6 +488,23 @@ export interface OrderParseVehicleDraft {
   make?: string | null;
   model?: string | null;
   vin?: string | null;
+  stock_id?: string | null;
+  license_plate?: string | null;
+  location?: string | null;
+  ll_id?: string | null;
+  autohero_car?: boolean | null;
+  notes?: string | null;
+}
+
+export interface OrderParseTableRow {
+  stock_id?: string | null;
+  vin?: string | null;
+  model?: string | null;
+  license_plate?: string | null;
+  location?: string | null;
+  ll_id?: string | null;
+  autohero_car?: boolean | null;
+  make?: string | null;
 }
 
 export interface OrderParseOutput {
@@ -325,10 +512,15 @@ export interface OrderParseOutput {
   pickup_stops: OrderParseStopDraft[];
   delivery_stops: OrderParseStopDraft[];
   vehicles: OrderParseVehicleDraft[];
+  table_rows?: OrderParseTableRow[];
   planned_pickup_date?: string | null;
   planned_delivery_date?: string | null;
   notes?: string | null;
   missing_fields?: string[];
+  validation_errors?: string[];
+  warnings?: string[];
+  vehicle_count?: number;
+  reference_numbers?: string[];
   field_confidence: Record<string, number>;
   overall_confidence?: number;
   created_order_id?: string;

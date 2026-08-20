@@ -44,6 +44,7 @@ def list_customers(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
     search: str | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
     current_user: User = Depends(require_customer_manager),
     customer_service: CustomerService = Depends(get_customer_service),
 ) -> SuccessResponse[list[CustomerResponse]]:
@@ -53,6 +54,7 @@ def list_customers(
         page=page,
         page_size=page_size,
         search=search,
+        is_active=is_active,
     )
     data = [CustomerResponse.model_validate(customer) for customer in customers]
     return success_response(data, meta=build_list_meta(page, page_size, total))

@@ -42,7 +42,7 @@ DEMO_DRIVER_PASSWORD = "DemoDriver123!"
 DEMO_MOBILE_DRIVER_EMAIL = "driver1@prodrive.demo"
 DEMO_MOBILE_DRIVER_PASSWORD = "ProDrive2026!"
 
-DEMO_CUSTOMER_COUNT = 20
+DEMO_CUSTOMER_COUNT = 1
 DEMO_DRIVER_COUNT = 15
 DEMO_TRUCK_COUNT = 10
 DEMO_TRAILER_COUNT = 8
@@ -349,7 +349,7 @@ def seed_demo_orders(db: Session, company_id: uuid.UUID) -> None:
         select(Trailer).where(Trailer.company_id == company_id, Trailer.deleted_at.is_(None)).limit(5)
     ).all()
 
-    if len(customers) < 3 or not drivers:
+    if not customers or not drivers:
         logger.warning("Skipping demo orders — insufficient lookup data.")
         return
 

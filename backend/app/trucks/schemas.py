@@ -18,6 +18,7 @@ class TruckResponse(BaseModel):
     model: str | None
     vin: str | None
     capacity: int | None
+    current_mileage: int | None
     active: bool
     created_at: datetime
     updated_at: datetime
@@ -31,6 +32,7 @@ class TruckCreateRequest(BaseModel):
     model: str | None = Field(default=None, max_length=100)
     vin: str | None = Field(default=None, max_length=32)
     capacity: int | None = Field(default=None, ge=1)
+    current_mileage: int | None = Field(default=None, ge=0)
     active: bool = True
 
 
@@ -42,4 +44,5 @@ class TruckUpdateRequest(BaseModel):
     model: str | None = Field(default=None, max_length=100)
     vin: str | None = Field(default=None, max_length=32)
     capacity: int | None = Field(default=None, ge=1)
+    current_mileage: int | None = Field(default=None, ge=0)
     active: bool = True

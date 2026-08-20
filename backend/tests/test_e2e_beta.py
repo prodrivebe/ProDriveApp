@@ -63,7 +63,7 @@ def test_e2e_dispatcher_order_to_assignment_flow(
             "vehicles": [{"make": "BMW", "model": "X5", "estimated_weight": 2200, "estimated_height": 1.75}],
         },
     )
-    assert order_response.status_code == 200
+    assert order_response.status_code == 201
     order_id = order_response.json()["data"]["id"]
 
     assign_response = client.post(

@@ -2,19 +2,55 @@
 
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+from collections.abc import Generator
 
-from app.config.settings import Settings
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.database.session as db_session_module
+from app.config.settings import Settings, get_settings
+from app.database.base import Base
+from app.database.session import get_db
 from app.main import create_app
 
 
 def _build_client(**settings_overrides: object) -> TestClient:
+    sqlite_url = "sqlite+pysqlite:///:memory:"
     settings = Settings(
         environment="test",
         jwt_secret_key="test-secret-key-with-32-byte-minimum-length",
+        database_url_override=sqlite_url,
         **settings_overrides,
     )
-    return TestClient(create_app(settings))
+    engine = create_engine(
+        sqlite_url,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    testing_session_local = sessionmaker(
+        bind=engine,
+        autocommit=False,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+    db_session_module._engine = engine
+    db_session_module.SessionLocal = testing_session_local
+
+    application = create_app(settings)
+    application.dependency_overrides[get_settings] = lambda: settings
+
+    def override_get_db() -> Generator[Session]:
+        db = testing_session_local()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    application.dependency_overrides[get_db] = override_get_db
+    return TestClient(application)
 
 
 def test_ops_status_reports_feature_flags() -> None:

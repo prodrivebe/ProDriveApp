@@ -1,5 +1,6 @@
 """Sprint 4 order management domain tests."""
 
+import io
 import uuid
 
 from fastapi.testclient import TestClient
@@ -10,6 +11,13 @@ from app.auth.security import hash_password
 from app.common.enums import UserRole
 from app.companies.models import Company, CompanySettings
 from app.users.models import User
+
+MINIMAL_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+    b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+    b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+    b"\x0d\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
 
 
 def _auth(token: str) -> dict[str, str]:
@@ -401,7 +409,16 @@ def test_completed_order_cannot_be_edited(
     headers = _auth(admin_tokens["access_token"])
     customer_id = _create_customer(client, headers)
     _, driver_id = _create_driver_user(client, headers, email="complete.driver@example.com")
-    order = _create_order(client, headers, customer_id)
+    order = _create_order(
+        client,
+        headers,
+        customer_id,
+        stops=[
+            {"stop_type": "PICKUP", "sequence": 1, "city": "Brussels", "country": "BE"},
+            {"stop_type": "DELIVERY", "sequence": 2, "city": "Antwerp", "country": "BE"},
+        ],
+        vehicles=[{"make": "BMW", "model": "320", "vin": "WBAPH5C55BA123456"}],
+    )
 
     client.put(
         f"/api/v1/orders/{order['id']}",
@@ -426,11 +443,28 @@ def test_completed_order_cannot_be_edited(
         "complete-delivery",
     ):
         if path == "complete-loading":
+            order_details = client.get(f"/api/v1/orders/{order['id']}", headers=driver_headers)
+            assert order_details.status_code == 200
+            for vehicle in order_details.json()["data"]["vehicles"]:
+                verify = client.post(
+                    f"/api/v1/orders/{order['id']}/vehicles/{vehicle['id']}/verify-vin",
+                    headers=driver_headers,
+                    json={"vin": vehicle.get("vin") or "WBAPH5C55BA123456"},
+                )
+                assert verify.status_code == 200, verify.text
             generate = client.post(
                 f"/api/v1/orders/{order['id']}/cmr/generate",
                 headers=driver_headers,
             )
             assert generate.status_code == 200, generate.text
+        if path == "start-delivery":
+            upload = client.post(
+                f"/api/v1/orders/{order['id']}/documents",
+                headers=driver_headers,
+                files={"file": ("signed-cmr.png", io.BytesIO(MINIMAL_PNG), "image/png")},
+                data={"document_type": "CMR"},
+            )
+            assert upload.status_code == 201, upload.text
         step = client.post(
             f"/api/v1/orders/{order['id']}/{path}",
             headers=driver_headers,
