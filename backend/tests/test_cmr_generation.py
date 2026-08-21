@@ -304,3 +304,65 @@ def test_delivery_requires_signed_cmr_upload_before_completion(
         if doc["document_type"] == "CMR"
     ]
     assert max(cmr_versions) >= 2
+
+
+def test_cmr_preview_lists_stock_id_vin_model_and_plate(
+    client: TestClient,
+    admin_tokens: dict[str, str],
+) -> None:
+    """Generated CMR shows per-vehicle Stock ID, VIN, model and license plate."""
+    admin_headers = _auth(admin_tokens["access_token"])
+    driver_id, driver_headers = _create_driver(
+        client, admin_headers, "cmr.stock@example.com"
+    )
+    customer_id = _create_customer(client, admin_headers)
+    response = client.post(
+        "/api/v1/orders",
+        headers=admin_headers,
+        json={
+            "customer_id": customer_id,
+            "customer_reference_numbers": ["LL-ORDER-REF"],
+            "planned_pickup_date": "2026-08-12",
+            "planned_delivery_date": "2026-08-14",
+            "stops": [
+                {
+                    "stop_type": "PICKUP",
+                    "sequence": 1,
+                    "company_name": "Pickup Co",
+                    "city": "Antwerp",
+                    "country": "BE",
+                },
+                {
+                    "stop_type": "DELIVERY",
+                    "sequence": 2,
+                    "company_name": "Delivery Co",
+                    "city": "Brussels",
+                    "country": "BE",
+                },
+            ],
+            "vehicles": [
+                {
+                    "make": "Renault",
+                    "model": "Trafic 1.9 Diesel",
+                    "vin": "VF1FLACA66Y130037",
+                    "notes": "Stock ID: HN60935\nLicense plate: 1WST863",
+                }
+            ],
+        },
+    )
+    assert response.status_code == 201, response.text
+    order_id = response.json()["data"]["id"]
+    _advance_to_loading(client, admin_headers, driver_headers, order_id, driver_id)
+
+    preview = client.get(f"/api/v1/orders/{order_id}/cmr/preview", headers=driver_headers)
+    assert preview.status_code == 200, preview.text
+    reader = PdfReader(io.BytesIO(preview.content))
+    text = "".join(page.extract_text() or "" for page in reader.pages)
+
+    assert "HN60935" in text
+    assert "1WST863" in text
+    assert "VF1FLACA66Y130037" in text
+    assert "Renault" in text
+    assert "Trafic 1.9 Diesel" in text
+    assert "LL-ORDER-REF" in text
+    assert text.count("HN60935") == 1

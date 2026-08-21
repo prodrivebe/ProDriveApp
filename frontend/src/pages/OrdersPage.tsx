@@ -25,6 +25,7 @@ import { driversService } from "../services/driversService";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingState } from "../components/LoadingState";
 import { StatusChip } from "../components/StatusChip";
+import { PageHeader } from "../design-system";
 import { formatDate, formatStopCities } from "../utils/format";
 import { formatDriverName } from "../utils/driverDisplay";
 import type { OrderDetail } from "../types/api";
@@ -104,14 +105,15 @@ export function OrdersPage() {
 
   return (
     <Stack spacing={3}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4" fontWeight={700}>
-          Orders
-        </Typography>
-        <Button component={RouterLink} to="/orders/new" variant="contained" startIcon={<AddIcon />}>
-          Create order
-        </Button>
-      </Box>
+      <PageHeader
+        title="Orders"
+        subtitle="Manage transport orders and assignments"
+        actions={
+          <Button component={RouterLink} to="/orders/new" variant="contained" startIcon={<AddIcon />}>
+            Create order
+          </Button>
+        }
+      />
 
       <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
         <TextField

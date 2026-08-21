@@ -6,15 +6,16 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { getErrorMessage } from "../utils/errors";
+import { PremiumCard } from "../design-system";
+import { colors } from "../design-system/tokens";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Enter your username"),
@@ -44,14 +45,32 @@ export function LoginPage() {
   });
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2, bgcolor: "background.default" }}>
-      <Card sx={{ width: "100%", maxWidth: 420 }}>
-        <CardContent>
-          <Stack spacing={2} component="form" onSubmit={onSubmit}>
-            <Typography variant="h5" fontWeight={700} color="primary">
-              ProDrive Dispatcher
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        p: 2,
+        background: `linear-gradient(160deg, ${colors.navy.deep} 0%, ${colors.navy.primary} 42%, ${colors.blueGrey[50]} 42%)`,
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: 440 }}>
+        <Box sx={{ mb: 3, textAlign: "center", color: "common.white" }}>
+          <Typography variant="overline" sx={{ color: alpha("#FFFFFF", 0.7) }}>
+            Executive Transport Platform
+          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: "0.04em" }}>
+            PRODRIVE
+          </Typography>
+          <Typography variant="body2" sx={{ color: alpha("#FFFFFF", 0.72), mt: 0.5 }}>
+            Dispatcher sign in
+          </Typography>
+        </Box>
+        <PremiumCard contentSx={{ p: 3 }}>
+          <Stack spacing={2.5} component="form" onSubmit={onSubmit}>
+            <Typography variant="body2" color="text.secondary">
+              Sign in to manage transport operations.
             </Typography>
-            <Typography color="text.secondary">Sign in to manage transport operations.</Typography>
             {error ? <Alert severity="error">{error}</Alert> : null}
             <TextField
               label="Username"
@@ -68,12 +87,12 @@ export function LoginPage() {
               helperText={errors.password?.message}
               {...register("password")}
             />
-            <Button type="submit" variant="contained" disabled={isSubmitting}>
+            <Button type="submit" variant="contained" size="large" disabled={isSubmitting} fullWidth>
               {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
           </Stack>
-        </CardContent>
-      </Card>
+        </PremiumCard>
+      </Box>
     </Box>
   );
 }

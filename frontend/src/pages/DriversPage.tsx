@@ -24,6 +24,7 @@ import { formatDriverName } from "../utils/driverDisplay";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingState } from "../components/LoadingState";
 import type { Driver, DriverCreatePayload, DriverUpdatePayload } from "../types/api";
+import { PageHeader } from "../design-system";
 
 export function DriversPage() {
   const queryClient = useQueryClient();
@@ -72,21 +73,22 @@ export function DriversPage() {
 
   return (
     <Stack spacing={3}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4" fontWeight={700}>
-          Drivers
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setEditingDriver(null);
-            setDialogOpen(true);
-          }}
-        >
-          Add driver
-        </Button>
-      </Box>
+      <PageHeader
+        title="Drivers"
+        subtitle="Driver roster, assignments and compliance"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditingDriver(null);
+              setDialogOpen(true);
+            }}
+          >
+            Add driver
+          </Button>
+        }
+      />
 
       <TextField
         label="Search drivers"

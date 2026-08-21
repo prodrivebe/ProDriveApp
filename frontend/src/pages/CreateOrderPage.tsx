@@ -65,6 +65,7 @@ import { AiOrderPanel } from "../components/AiOrderPanel";
 import { getErrorMessage } from "../utils/errors";
 
 import type { CustomerCreatePayload } from "../types/api";
+import { PageHeader } from "../design-system";
 
 
 
@@ -298,11 +299,10 @@ export function CreateOrderPage() {
 
     <Stack spacing={3}>
 
-      <Typography variant="h4" fontWeight={700}>
-
-        Create order
-
-      </Typography>
+      <PageHeader
+        title="Create order"
+        subtitle="Configure customer, stops, vehicles and references"
+      />
 
       {createMutation.isError ? <ErrorAlert error={createMutation.error} /> : null}
 

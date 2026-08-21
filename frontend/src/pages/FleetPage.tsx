@@ -22,6 +22,7 @@ import { TruckFormDialog } from "../components/TruckFormDialog";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingState } from "../components/LoadingState";
 import type { Truck, TruckCreatePayload, TruckUpdatePayload } from "../types/api";
+import { PageHeader, StatTile } from "../design-system";
 
 export function FleetPage() {
   const queryClient = useQueryClient();
@@ -71,58 +72,48 @@ export function FleetPage() {
 
   return (
     <Stack spacing={3}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4" fontWeight={700}>
-          Fleet
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setEditingTruck(null);
-            setDialogOpen(true);
-          }}
-        >
-          Add truck
-        </Button>
-      </Box>
+      <PageHeader
+        title="Fleet"
+        subtitle="Trucks, trailers and fleet availability"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setEditingTruck(null);
+              setDialogOpen(true);
+            }}
+          >
+            Add truck
+          </Button>
+        }
+      />
 
       {saveMutation.isError ? <ErrorAlert error={saveMutation.error} /> : null}
       {deleteMutation.isError ? <ErrorAlert error={deleteMutation.error} /> : null}
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Trucks</Typography>
-              <Typography variant="h4">
-                {overview.trucks.active}/{overview.trucks.total}
-              </Typography>
-              <Typography color="text.secondary">Active trucks</Typography>
-            </CardContent>
-          </Card>
+          <StatTile
+            label="Trucks"
+            value={`${overview.trucks.active}/${overview.trucks.total}`}
+            hint="Active trucks"
+            accent
+          />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Trailers</Typography>
-              <Typography variant="h4">
-                {overview.trailers.active}/{overview.trailers.total}
-              </Typography>
-              <Typography color="text.secondary">Active trailers</Typography>
-            </CardContent>
-          </Card>
+          <StatTile
+            label="Trailers"
+            value={`${overview.trailers.active}/${overview.trailers.total}`}
+            hint="Active trailers"
+          />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Drivers</Typography>
-              <Typography variant="h4">
-                {overview.drivers.active}/{overview.drivers.total}
-              </Typography>
-              <Typography color="text.secondary">Active drivers</Typography>
-            </CardContent>
-          </Card>
+          <StatTile
+            label="Drivers"
+            value={`${overview.drivers.active}/${overview.drivers.total}`}
+            hint="Active drivers"
+          />
         </Grid>
       </Grid>
 

@@ -34,9 +34,52 @@ if TYPE_CHECKING:
 class CmrVehicleRow:
     """Single vehicle row on the CMR."""
 
-    make: str
-    model: str
-    vin: str
+    stock_id: str = ""
+    make: str = ""
+    model: str = ""
+    vin: str = ""
+    license_plate: str = ""
+
+
+def _parse_vehicle_identifiers(notes: str | None) -> tuple[str, str]:
+    """Extract Stock ID and license plate stored in vehicle notes."""
+    stock_id = ""
+    license_plate = ""
+    if not notes:
+        return stock_id, license_plate
+    for segment in notes.replace(";", "\n").split("\n"):
+        segment = segment.strip()
+        if not segment:
+            continue
+        lower = segment.lower()
+        if lower.startswith("stock id:"):
+            stock_id = segment.split(":", 1)[1].strip()
+        elif lower.startswith("license plate:"):
+            license_plate = segment.split(":", 1)[1].strip()
+    return stock_id, license_plate
+
+
+_INTERNAL_VEHICLE_NOTE_PREFIXES = (
+    "stock id:",
+    "license plate:",
+    "vin:",
+)
+
+
+def _vehicle_remark_from_notes(notes: str | None) -> str:
+    """Return free-text vehicle remarks excluding parsed CMR metadata lines."""
+    if not notes:
+        return ""
+    remark_lines: list[str] = []
+    for segment in notes.replace(";", "\n").split("\n"):
+        segment = segment.strip()
+        if not segment:
+            continue
+        lower = segment.lower()
+        if any(lower.startswith(prefix) for prefix in _INTERNAL_VEHICLE_NOTE_PREFIXES):
+            continue
+        remark_lines.append(segment)
+    return "\n".join(remark_lines).strip()
 
 
 @dataclass
@@ -97,8 +140,27 @@ def build_cmr_context(
     if order.notes:
         remarks_parts.append(order.notes.strip())
     for vehicle in active_vehicles:
-        if vehicle.notes:
-            remarks_parts.append(f"{vehicle.make or ''} {vehicle.model or ''}: {vehicle.notes}".strip())
+        remark = _vehicle_remark_from_notes(vehicle.notes)
+        if not remark:
+            continue
+        label = " ".join(part for part in [vehicle.make, vehicle.model] if part).strip()
+        if label:
+            remarks_parts.append(f"{label}: {remark}")
+        else:
+            remarks_parts.append(remark)
+
+    vehicle_rows: list[CmrVehicleRow] = []
+    for vehicle in active_vehicles:
+        stock_id, license_plate = _parse_vehicle_identifiers(vehicle.notes)
+        vehicle_rows.append(
+            CmrVehicleRow(
+                stock_id=stock_id,
+                make=vehicle.make or "",
+                model=vehicle.model or "",
+                vin=vehicle.verified_vin or vehicle.vin or "",
+                license_plate=license_plate,
+            )
+        )
 
     return CmrContext(
         order_number=order.order_number,
@@ -119,14 +181,7 @@ def build_cmr_context(
         truck_plate=truck_plate,
         trailer_plate=trailer_plate,
         vehicle_count=len(active_vehicles),
-        vehicles=[
-            CmrVehicleRow(
-                make=vehicle.make or "",
-                model=vehicle.model or "",
-                vin=vehicle.verified_vin or vehicle.vin or "",
-            )
-            for vehicle in active_vehicles
-        ],
+        vehicles=vehicle_rows,
         remarks="\n".join(remarks_parts),
         damage_notes=damage_notes,
         company_name=company.name,
@@ -299,6 +354,25 @@ def _vehicle_nature_lines(context: CmrContext) -> str:
     return "\n".join(lines)
 
 
+def _stock_id_lines(context: CmrContext) -> str:
+    """Stock IDs for box 6 — one per vehicle row."""
+    if not context.vehicles:
+        return ""
+    lines: list[str] = []
+    for index, vehicle in enumerate(context.vehicles, start=1):
+        stock = vehicle.stock_id.strip()
+        plate = vehicle.license_plate.strip()
+        if stock and plate:
+            lines.append(f"{index}. {stock} · {plate}")
+        elif stock:
+            lines.append(f"{index}. {stock}")
+        elif plate:
+            lines.append(f"{index}. {plate}")
+        else:
+            lines.append(f"{index}. —")
+    return "\n".join(lines)
+
+
 def _vin_lines(context: CmrContext) -> str:
     """One VIN per numbered line for box 10."""
     if not context.vehicles:
@@ -395,7 +469,7 @@ def build_cmr_pdf(
         "Documents annexés", "Bijgevoegde documenten", docs_value, value_size=7,
     )
 
-    goods_h = 46 * mm
+    goods_h = max(46 * mm, (10 + max(len(context.vehicles), 1) * 8) * mm)
     y -= goods_h
     _draw_rect(pdf, MARGIN, y, CONTENT_WIDTH, goods_h)
 
@@ -429,9 +503,12 @@ def build_cmr_pdf(
 
     body_y = y + 2 * mm
     body_h = goods_h - header_h - 2 * mm
+    vehicle_count = max(len(context.vehicles), 1)
+    value_font_size = 7.0 if vehicle_count <= 4 else 6.5
+    vin_font_size = 6.5 if vehicle_count <= 4 else 6.0
     col_x = MARGIN
     goods_values = [
-        refs or "—",
+        _stock_id_lines(context) or "—",
         str(context.vehicle_count) if context.vehicle_count else "—",
         "Véhicule\nVoertuig",
         _vehicle_nature_lines(context) or "—",
@@ -442,11 +519,13 @@ def build_cmr_pdf(
     for index, value in enumerate(goods_values):
         width = col_widths[index]
         pdf.setFillColor(TEXT_COLOR)
-        pdf.setFont("Helvetica", 7.5 if index == 4 else 7)
+        font_size = vin_font_size if index == 4 else value_font_size
+        pdf.setFont("Helvetica", font_size)
+        leading = font_size + 1.5
         text_obj = pdf.beginText(col_x + 1.5 * mm, body_y + body_h - 3 * mm)
-        text_obj.setLeading(8)
+        text_obj.setLeading(leading)
         for line in value.split("\n"):
-            text_obj.textLine(line[:100])
+            text_obj.textLine(line[:120])
         pdf.drawText(text_obj)
         col_x += width
 

@@ -2,8 +2,6 @@ import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Stack,
   Typography,
 } from "@mui/material";
@@ -16,44 +14,16 @@ import { ErrorAlert } from "../components/ErrorAlert";
 import { DashboardEmptyState, DashboardSkeleton } from "../components/DashboardSkeleton";
 import { OperationsBoard } from "../components/OperationsBoard";
 import type { KpiDashboard, Notification, OrdersReport, OrderSummary } from "../types/api";
+import { PageHeader, PremiumCard, StatTile } from "../design-system";
 import { isToday } from "../utils/format";
-
-function StatCard({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
-  return (
-    <Box sx={{ p: 2, border: 1, borderColor: "divider", borderRadius: 2, height: "100%" }}>
-      <Typography color="text.secondary" variant="body2">
-        {label}
-      </Typography>
-      <Typography variant="h4" fontWeight={700}>
-        {value}
-      </Typography>
-      {hint ? (
-        <Typography variant="caption" color="text.secondary">
-          {hint}
-        </Typography>
-      ) : null}
-    </Box>
-  );
-}
 
 function FleetSnapshot({ fleet }: { fleet: KpiDashboard["fleet"] }) {
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Fleet snapshot
-        </Typography>
-        <Typography>
-          Drivers: {fleet.drivers.active}/{fleet.drivers.total} active
-        </Typography>
-        <Typography>
-          Trucks: {fleet.trucks.active}/{fleet.trucks.total} active
-        </Typography>
-        <Typography>
-          Trailers: {fleet.trailers.active}/{fleet.trailers.total} active
-        </Typography>
-      </CardContent>
-    </Card>
+    <PremiumCard title="Fleet snapshot">
+      <Typography>Drivers: {fleet.drivers.active}/{fleet.drivers.total} active</Typography>
+      <Typography>Trucks: {fleet.trucks.active}/{fleet.trucks.total} active</Typography>
+      <Typography>Trailers: {fleet.trailers.active}/{fleet.trailers.total} active</Typography>
+    </PremiumCard>
   );
 }
 
@@ -121,46 +91,42 @@ export function DashboardPage() {
 
   return (
     <Stack spacing={3}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Operations Board
-          </Typography>
-          <Typography color="text.secondary">
-            Live transport overview — updates automatically
-          </Typography>
-        </Box>
-        <Button component={RouterLink} to="/orders/new" variant="contained">
-          Create order
-        </Button>
-      </Box>
+      <PageHeader
+        title="Operations Board"
+        subtitle="Live transport overview — updates automatically"
+        actions={
+          <Button component={RouterLink} to="/orders/new" variant="contained">
+            Create order
+          </Button>
+        }
+      />
 
       {!hasActivity ? <DashboardEmptyState /> : null}
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="Waiting assignment" value={metrics.waitingAssignment} />
+          <StatTile label="Waiting assignment" value={metrics.waitingAssignment} accent />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="Active orders" value={kpi.active_orders} />
+          <StatTile label="Active orders" value={kpi.active_orders} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="Loading" value={metrics.loadingOrders} />
+          <StatTile label="Loading" value={metrics.loadingOrders} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="In transit" value={metrics.inTransit} />
+          <StatTile label="In transit" value={metrics.inTransit} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="Delayed" value={metrics.delayedOrders} hint="Past planned delivery" />
+          <StatTile label="Delayed" value={metrics.delayedOrders} hint="Past planned delivery" />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="Completed today" value={metrics.completedToday} />
+          <StatTile label="Completed today" value={metrics.completedToday} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="Unread alerts" value={unreadNotifications.length} />
+          <StatTile label="Unread alerts" value={unreadNotifications.length} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard label="Active drivers" value={kpi.active_drivers} />
+          <StatTile label="Active drivers" value={kpi.active_drivers} />
         </Grid>
       </Grid>
 
@@ -169,25 +135,20 @@ export function DashboardPage() {
           <FleetSnapshot fleet={kpi.fleet} />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Recent alerts
-              </Typography>
-              {unreadNotifications.length === 0 ? (
-                <Typography color="text.secondary">No unread alerts.</Typography>
-              ) : (
-                unreadNotifications.slice(0, 5).map((item: Notification) => (
-                  <Box key={item.id} sx={{ mb: 1.5 }}>
-                    <Typography fontWeight={600}>{item.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {item.message}
-                    </Typography>
-                  </Box>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          <PremiumCard title="Recent alerts">
+            {unreadNotifications.length === 0 ? (
+              <Typography color="text.secondary">No unread alerts.</Typography>
+            ) : (
+              unreadNotifications.slice(0, 5).map((item: Notification) => (
+                <Box key={item.id} sx={{ mb: 1.5 }}>
+                  <Typography fontWeight={600}>{item.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.message}
+                  </Typography>
+                </Box>
+              ))
+            )}
+          </PremiumCard>
         </Grid>
       </Grid>
 

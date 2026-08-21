@@ -24,6 +24,7 @@ import { CustomerFormDialog } from "../components/CustomerFormDialog";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { LoadingState } from "../components/LoadingState";
 import type { Customer, CustomerCreatePayload } from "../types/api";
+import { PageHeader } from "../design-system";
 
 export function CustomersPage() {
   const queryClient = useQueryClient();
@@ -83,14 +84,15 @@ export function CustomersPage() {
 
   return (
     <Stack spacing={3}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4" fontWeight={700}>
-          Customers
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Add customer
-        </Button>
-      </Box>
+      <PageHeader
+        title="Customers"
+        subtitle="Company accounts and contact details"
+        actions={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            Add customer
+          </Button>
+        }
+      />
 
       <TextField
         label="Search customers"

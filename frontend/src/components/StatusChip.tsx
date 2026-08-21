@@ -1,27 +1,11 @@
 import { Chip } from "@mui/material";
-
-const STATUS_COLORS: Record<string, "default" | "primary" | "secondary" | "success" | "warning" | "error" | "info"> = {
-  DRAFT: "default",
-  READY: "info",
-  ASSIGNED: "info",
-  ACCEPTED: "primary",
-  ARRIVED_PICKUP: "primary",
-  LOADING: "warning",
-  LOADED: "warning",
-  IN_TRANSIT: "secondary",
-  ARRIVED_DELIVERY: "secondary",
-  DELIVERING: "warning",
-  COMPLETED: "success",
-  CANCELLED: "error",
-};
+import { orderStatusVariant, StatusBadge } from "../design-system";
 
 export function StatusChip({ status }: { status: string }) {
-  return (
-    <Chip
-      label={status.replaceAll("_", " ")}
-      color={STATUS_COLORS[status] ?? "default"}
-      size="small"
-      sx={{ fontWeight: 600 }}
-    />
-  );
+  const label = status.replaceAll("_", " ");
+  const variant = orderStatusVariant(status);
+  return <StatusBadge label={label} variant={variant} />;
 }
+
+/** @deprecated Use StatusBadge directly for non-order statuses */
+export { StatusBadge, orderStatusVariant };
